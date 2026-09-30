@@ -623,3 +623,115 @@ def test_a_sun_keyframe_landing_inside_a_colour_section_splits_it():
         "this test documents the failure; if it now holds red, validation has been"
         " added and this expectation should be inverted"
     )
+
+
+# --------------------------------------------------------------------- validation
+
+
+from custom_components.lightcurve.engine import (  # noqa: E402
+    MAX_KEYFRAMES,
+    validate,
+)
+
+REFERENCE = date(2026, 9, 30)
+
+
+def codes(issues) -> set[str]:
+    return {i.code for i in issues}
+
+
+def test_a_healthy_profile_reports_nothing():
+    keyframes = [
+        kf("dawn", fixed("06:00"), Colour.from_kelvin(2700), 30),
+        kf("noon", solar("solar_noon"), Colour.from_kelvin(4000), 70),
+        kf("dusk", fixed("19:00"), Colour.from_kelvin(2400), 20),
+    ]
+    assert validate(keyframes, sun, TZ, REFERENCE) == []
+
+
+def test_too_few_keyframes_is_an_error():
+    issues = validate([kf("a", fixed("06:00"), Colour.from_kelvin(2700), 30)],
+                      sun, TZ, REFERENCE)
+    assert codes(issues) == {"too_few_keyframes"}
+    assert issues[0].level == "error"
+
+
+def test_too_many_keyframes_is_an_error():
+    # 20-minute spacing keeps them inside one day and clear of the collision rule,
+    # so the only complaint should be the count.
+    many = [
+        kf(f"k{i}", fixed(f"{(i * 20) // 60:02d}:{(i * 20) % 60:02d}"),
+           Colour.from_kelvin(3000), 50)
+        for i in range(MAX_KEYFRAMES + 1)
+    ]
+    assert "too_many_keyframes" in codes(validate(many, sun, TZ, REFERENCE))
+
+
+def test_duplicate_ids_are_an_error():
+    keyframes = [
+        kf("same", fixed("06:00"), Colour.from_kelvin(2700), 30),
+        kf("same", fixed("18:00"), Colour.from_kelvin(2400), 20),
+    ]
+    assert "duplicate_ids" in codes(validate(keyframes, sun, TZ, REFERENCE))
+
+
+def test_keyframes_that_collide_during_the_year_are_an_error():
+    """A fixed keyframe and a sun keyframe that are hours apart today can meet in
+    June. Catching that needs sampling the year, not just checking today."""
+    keyframes = [
+        kf("fixed_six", fixed("06:00"), Colour.from_kelvin(2700), 30),
+        kf("sunrise", solar("sunrise"), Colour.from_kelvin(3000), 50),
+        kf("dusk", fixed("19:00"), Colour.from_kelvin(2400), 20),
+    ]
+
+    def drifting_sun(day: date, event: str):
+        """Sunrise sweeps across 06:00 over the year."""
+        if event == "sunrise":
+            offset = (day - REFERENCE).days
+            return at(day, 5, 30) + timedelta(minutes=offset * 2)
+        return sun(day, event)
+
+    issues = validate(keyframes, drifting_sun, TZ, REFERENCE)
+    assert "keyframes_too_close" in codes(issues)
+    assert any(i.level == "error" for i in issues if i.code == "keyframes_too_close")
+
+
+def test_a_mode_switch_is_warned_about_not_blocked():
+    keyframes = [
+        kf("white", fixed("08:00"), Colour.from_kelvin(2700), 40),
+        kf("red", fixed("20:00"), Colour.from_hs(0, 100), 3),
+    ]
+    issues = validate(keyframes, sun, TZ, REFERENCE)
+    assert "mode_switch" in codes(issues)
+    assert all(i.level == "warning" for i in issues)
+
+
+def test_a_sun_keyframe_drifting_into_a_colour_section_is_warned_about():
+    """The hazard from Appendix E.1, now caught before it reaches the lights."""
+    keyframes = [
+        kf("red_on", fixed("20:00"), Colour.from_hs(0, 100), 3),
+        kf("red_off", fixed("23:30"), Colour.from_hs(0, 100), 3),
+        kf("morning", fixed("08:00"), Colour.from_kelvin(2700), 40),
+        kf("late", solar("solar_noon"), Colour.from_kelvin(4000), 70),
+    ]
+
+    def wandering_noon(day: date, event: str):
+        if event == "solar_noon":
+            # drifts into the 20:00-23:30 colour section later in the year
+            offset = (day - REFERENCE).days
+            return at(day, 12, 0) + timedelta(minutes=offset * 3)
+        return sun(day, event)
+
+    issues = validate(keyframes, wandering_noon, TZ, REFERENCE)
+    assert "colour_section_split" in codes(issues), (
+        "a keyframe drifting inside the red section must be reported"
+    )
+
+
+def test_a_stable_colour_section_is_not_warned_about():
+    keyframes = [
+        kf("red_on", fixed("20:00"), Colour.from_hs(0, 100), 3),
+        kf("red_off", fixed("23:30"), Colour.from_hs(0, 100), 3),
+        kf("morning", fixed("08:00"), Colour.from_kelvin(2700), 40),
+    ]
+    assert "colour_section_split" not in codes(validate(keyframes, sun, TZ, REFERENCE))

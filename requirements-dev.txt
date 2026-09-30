@@ -6,4 +6,8 @@
 # pip silently filters out every 2026.x release on an older interpreter, which looks
 # exactly like "that version does not exist".
 pytest-homeassistant-custom-component==0.13.367
+# The panel registers through panel_custom, which depends on frontend, which needs
+# this package present. Without it the whole integration fails to set up under test
+# and the panel path goes unexercised. Version must match what this HA release pins.
+home-assistant-frontend==20260826.7
 ruff

@@ -62,6 +62,7 @@ from .const import (
 )
 from .engine import (
     CurveError,
+    ResolvedKeyframe,
     Target,
     clamp_target,
     evaluate,
@@ -111,6 +112,9 @@ class GroupRuntime:
     suppress_until: dict[str, float] = field(default_factory=dict)
     pre_outage: dict[str, dict[str, Any]] = field(default_factory=dict)
     warned: set[str] = field(default_factory=set)
+    #: While the editor's scrubber is driving this group, the scheduler stands back
+    #: rather than fighting it for control of the same bulbs.
+    previewing: bool = False
 
     @property
     def overridden(self) -> bool:
@@ -269,6 +273,43 @@ class LightcurveCoordinator:
         if not lows:
             return (None, None)
         return (max(lows), min(highs))
+
+    def clamp_for(
+        self, group: Group, resolved: list[ResolvedKeyframe], moment: datetime
+    ) -> Target:
+        """Evaluate an already-resolved curve at one instant, clamped to the group.
+
+        Used by the editor, which resolves a profile the store may not hold yet.
+        """
+        target = evaluate(resolved, moment)
+        low, high = self.kelvin_range(group)
+        return clamp_target(target, low, high) if low and high else target
+
+    # --- preview ---------------------------------------------------------------
+
+    async def async_preview(self, group: Group, target: Target) -> None:
+        """Drive a group to an arbitrary target for the editor.
+
+        Bypasses the rate limiter on purpose. That limiter exists to stop a
+        background scheduler stacking commands on a slow bulb; the scrubber is direct
+        manipulation and has to keep up with a finger.
+        """
+        runtime = self.runtime(group.id)
+        runtime.previewing = True
+        data: dict[str, Any] = {ATTR_BRIGHTNESS_PCT: target.brightness_pct}
+        if target.mode == "kelvin":
+            data[ATTR_COLOR_TEMP_KELVIN] = target.kelvin
+        elif target.hs:
+            data[ATTR_HS_COLOR] = list(target.hs)
+        await self._async_send_raw(group, self.available_members(group), data)
+
+    async def async_end_preview(self, group: Group) -> None:
+        """Hand the group back to the curve."""
+        runtime = self.runtime(group.id)
+        if not runtime.previewing:
+            return
+        runtime.previewing = False
+        await self.async_apply(group, force=True)
 
     # --- applying --------------------------------------------------------------
 
@@ -735,6 +776,8 @@ class LightcurveCoordinator:
             if runtime.override_until and dt_util.utcnow() >= runtime.override_until:
                 _LOGGER.debug("%s: override expired", group.name)
                 runtime.clear_overrides()
+            if runtime.previewing:
+                continue
             if not self.is_on(group):
                 # Keep the published target current even while off, so the sensor and
                 # the wrapper's attributes stay meaningful.

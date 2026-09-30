@@ -474,3 +474,201 @@ def clamp_target(target: Target, min_kelvin: int, max_kelvin: int) -> Target:
         segment=target.segment,
         evaluated_at=target.evaluated_at,
     )
+
+
+# ---------------------------------------------------------------------- validation
+
+
+@dataclass(frozen=True)
+class ValidationIssue:
+    """One problem found in a profile.
+
+    `error` blocks saving; `warning` does not. The distinction matters because most
+    of what can go wrong here is seasonal — perfectly fine in September and wrong in
+    June — and refusing to save a profile the user cannot yet see is worse than
+    telling them what will happen.
+    """
+
+    level: Literal["error", "warning"]
+    code: str
+    message: str
+    keyframe_ids: tuple[str, ...] = ()
+
+    def as_dict(self) -> dict:
+        return {
+            "level": self.level,
+            "code": self.code,
+            "message": self.message,
+            "keyframe_ids": list(self.keyframe_ids),
+        }
+
+
+MIN_KEYFRAMES = 2
+MAX_KEYFRAMES = 48
+MIN_SEPARATION_MINUTES = 5
+
+
+def _colour_sections(keyframes: Sequence[ResolvedKeyframe]) -> list[tuple[int, int]]:
+    """Index ranges of consecutive colour keyframes, as (start, end) inclusive."""
+    sections: list[tuple[int, int]] = []
+    start: int | None = None
+    for index, keyframe in enumerate(keyframes):
+        if keyframe.colour.mode == "hs":
+            start = index if start is None else start
+        elif start is not None:
+            if index - 1 > start:
+                sections.append((start, index - 1))
+            start = None
+    if start is not None and len(keyframes) - 1 > start:
+        sections.append((start, len(keyframes) - 1))
+    return sections
+
+
+def validate(
+    keyframes: Sequence[Keyframe],
+    sun: SunLookup,
+    tz: tzinfo,
+    reference: date,
+    sample_days: int = 73,
+) -> list[ValidationIssue]:
+    """Check a profile across the year, not just today.
+
+    Sun-relative keyframes move by hours between solstices, so a profile that looks
+    fine on the day it is written can collide, reorder, or cut a colour section in
+    half six months later. Sampling every fifth day covers that at a fraction of the
+    cost of all 365, since sun times move smoothly.
+    """
+    issues: list[ValidationIssue] = []
+
+    if len(keyframes) < MIN_KEYFRAMES:
+        issues.append(
+            ValidationIssue(
+                "error",
+                "too_few_keyframes",
+                f"A profile needs at least {MIN_KEYFRAMES} keyframes;"
+                f" this one has {len(keyframes)}.",
+            )
+        )
+        return issues
+    if len(keyframes) > MAX_KEYFRAMES:
+        issues.append(
+            ValidationIssue(
+                "error",
+                "too_many_keyframes",
+                f"A profile may have at most {MAX_KEYFRAMES} keyframes;"
+                f" this one has {len(keyframes)}.",
+            )
+        )
+
+    ids = [k.id for k in keyframes]
+    duplicates = {i for i in ids if ids.count(i) > 1}
+    if duplicates:
+        issues.append(
+            ValidationIssue(
+                "error",
+                "duplicate_ids",
+                "Keyframe ids must be unique; repeated: "
+                + ", ".join(sorted(duplicates)),
+                tuple(sorted(duplicates)),
+            )
+        )
+
+    step = max(1, 365 // max(1, sample_days))
+    days = [reference + timedelta(days=offset) for offset in range(0, 365, step)]
+
+    collided: set[tuple[str, str]] = set()
+    reordered: set[tuple[str, str]] = set()
+    split_sections: set[tuple[str, str]] = set()
+
+    baseline = resolve_day(keyframes, reference, sun, tz)
+    baseline_order = [k.id for k in baseline]
+    baseline_sections = _colour_sections(baseline)
+
+    for day in days:
+        resolved = resolve_day(keyframes, day, sun, tz)
+        if len(resolved) < MIN_KEYFRAMES:
+            continue
+
+        for current, following in pairwise(resolved):
+            gap = (following.at - current.at).total_seconds() / 60
+            if gap < MIN_SEPARATION_MINUTES:
+                collided.add(tuple(sorted((current.id, following.id))))  # type: ignore[arg-type]
+
+        order = [k.id for k in resolved]
+        if order != baseline_order and set(order) == set(baseline_order):
+            for a, b in pairwise(baseline_order):
+                if a in order and b in order and order.index(a) > order.index(b):
+                    reordered.add((a, b))
+
+        # A keyframe drifting inside a colour section stops that section being one
+        # segment between two identical colours, so the colour is no longer held.
+        for start, end in baseline_sections:
+            section_ids = {k.id for k in baseline[start : end + 1]}
+            inside = [
+                k
+                for k in resolved
+                if k.id not in section_ids
+                and k.colour.mode != "hs"
+                and _between(resolved, k, section_ids)
+            ]
+            for intruder in inside:
+                split_sections.add((intruder.id, baseline[start].id))
+
+    for a, b in sorted(collided):
+        issues.append(
+            ValidationIssue(
+                "error",
+                "keyframes_too_close",
+                f"Keyframes {a} and {b} resolve within {MIN_SEPARATION_MINUTES}"
+                " minutes of each other at some point in the year.",
+                (a, b),
+            )
+        )
+    for a, b in sorted(reordered):
+        issues.append(
+            ValidationIssue(
+                "warning",
+                "seasonal_reorder",
+                f"Keyframe {a} moves after {b} at some point in the year, which"
+                " changes the shape of the curve.",
+                (a, b),
+            )
+        )
+    for intruder, section_start in sorted(split_sections):
+        issues.append(
+            ValidationIssue(
+                "warning",
+                "colour_section_split",
+                f"Keyframe {intruder} drifts inside the colour section starting at"
+                f" {section_start} at some point in the year, so the colour will not"
+                " hold across it.",
+                (intruder, section_start),
+            )
+        )
+
+    for current, following in pairwise(baseline):
+        if current.colour.mode != following.colour.mode:
+            issues.append(
+                ValidationIssue(
+                    "warning",
+                    "mode_switch",
+                    f"The segment {current.id} to {following.id} switches between"
+                    " colour temperature and colour, which can show a visible"
+                    " brightness jump.",
+                    (current.id, following.id),
+                )
+            )
+
+    return issues
+
+
+def _between(
+    resolved: Sequence[ResolvedKeyframe],
+    candidate: ResolvedKeyframe,
+    section_ids: set[str],
+) -> bool:
+    """Does `candidate` sit between the first and last member of a section?"""
+    members = [k for k in resolved if k.id in section_ids]
+    if len(members) < 2:
+        return False
+    return members[0].at < candidate.at < members[-1].at
