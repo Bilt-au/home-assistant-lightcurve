@@ -1,6 +1,6 @@
 # Lightcurve
 
-[![Validate](https://github.com/m4tD3v/lightcurve/actions/workflows/validate.yml/badge.svg)](https://github.com/m4tD3v/lightcurve/actions/workflows/validate.yml)
+[![Validate](https://github.com/Bilt-au/home-assistant-lightcurve/actions/workflows/validate.yml/badge.svg)](https://github.com/Bilt-au/home-assistant-lightcurve/actions/workflows/validate.yml)
 [![hacs](https://img.shields.io/badge/HACS-custom-41BDF5.svg)](https://hacs.xyz)
 
 A Home Assistant integration that drives your lights along a 24-hour curve of colour
@@ -25,7 +25,7 @@ than a workaround.
 Add this repository to HACS as a custom repository:
 
 1. HACS → three-dot menu → **Custom repositories**
-2. URL: `https://github.com/m4tD3v/lightcurve`, category: **Integration**
+2. URL: `https://github.com/Bilt-au/home-assistant-lightcurve`, category: **Integration**
 3. Find **Lightcurve** in HACS and install it
 4. Restart Home Assistant
 5. **Settings → Devices & Services → Add Integration → Lightcurve**

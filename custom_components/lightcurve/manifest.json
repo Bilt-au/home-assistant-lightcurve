@@ -5,10 +5,10 @@
     "@m4tD3v"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/m4tD3v/lightcurve",
+  "documentation": "https://github.com/Bilt-au/home-assistant-lightcurve",
   "integration_type": "hub",
   "iot_class": "local_push",
-  "issue_tracker": "https://github.com/m4tD3v/lightcurve/issues",
+  "issue_tracker": "https://github.com/Bilt-au/home-assistant-lightcurve/issues",
   "requirements": [],
   "single_config_entry": true,
   "version": "0.1.0"
