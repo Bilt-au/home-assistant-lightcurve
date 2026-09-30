@@ -154,10 +154,12 @@ export class LightcurvePanel extends LitElement {
     .hint { color: var(--secondary-text-color, #777); font-size: 13px; }
     .themes-head {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      justify-content: space-between;
+      gap: 8px;
       margin: 0 0 12px;
     }
+    .themes-head h2 { margin-right: auto; }
     .themes-head h2 {
       margin: 0;
       font-size: 15px;
@@ -171,49 +173,61 @@ export class LightcurvePanel extends LitElement {
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       gap: 10px;
     }
-    button.theme {
+    .theme-card {
       display: flex;
       flex-direction: column;
-      align-items: flex-start;
-      gap: 2px;
-      padding: 12px 14px;
-      min-height: 64px;
-      text-align: left;
-      background: var(--secondary-background-color, #eee);
-      color: var(--primary-text-color, #222);
+      border-radius: 8px;
+      overflow: hidden;
       border: 2px solid transparent;
+      background: var(--secondary-background-color, #eee);
     }
-    button.theme.holding {
+    .theme-card.holding {
       border-color: var(--primary-color, #03a9f4);
       background: color-mix(in srgb, var(--primary-color, #03a9f4) 14%, transparent);
     }
-    .theme-name { font-weight: 600; }
-    button.theme { position: relative; padding-left: 34px; }
+    button.theme-apply {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      min-height: 64px;
+      text-align: left;
+      background: transparent;
+      color: var(--primary-text-color, #222);
+      border-radius: 0;
+    }
+    .theme-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    /* A separate control rather than one nested inside the apply button: a click
+       target inside another click target is both hard to hit and easy to trigger
+       by accident. */
+    button.theme-edit {
+      border-radius: 0;
+      min-height: 38px;
+      padding: 8px;
+      font-size: 13px;
+      background: rgba(0, 0, 0, 0.06);
+      color: var(--primary-text-color, #222);
+      border-top: 1px solid var(--divider-color, #ddd);
+    }
+    button.theme-edit:hover { background: rgba(0, 0, 0, 0.12); }
     .swatch {
-      position: absolute;
-      left: 12px;
-      top: 14px;
+      flex: 0 0 auto;
       width: 14px;
       height: 14px;
+      margin-top: 3px;
       border-radius: 50%;
       box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
     }
     .swatch.inline {
-      position: static;
       display: inline-block;
-      margin-right: 6px;
+      margin: 0 6px 0 0;
       vertical-align: -2px;
     }
-    .edit {
-      position: absolute;
-      right: 8px;
-      top: 6px;
-      padding: 4px 6px;
-      border-radius: 6px;
-      opacity: 0.55;
-      font-size: 13px;
+    .editor h3 {
+      margin: 0;
+      font-size: 14px;
+      color: var(--primary-text-color, #222);
     }
-    .edit:hover { opacity: 1; background: rgba(0, 0, 0, 0.08); }
     .editor {
       margin-top: 16px;
       padding-top: 16px;
@@ -758,35 +772,35 @@ export class LightcurvePanel extends LitElement {
         <div class="themes">
           ${this.themes.map(
             (theme) => html`
-              <button
-                class="theme ${theme.holding ? "holding" : ""}"
-                @click=${() => void this.applyTheme(theme)}
-                title=${theme.covers.join(", ")}
-              >
-                <span
-                  class="swatch"
-                  style="background:${themeSwatch(theme)}"
-                ></span>
-                <span
-                  class="edit"
-                  title="Edit"
-                  @click=${(e: Event) => {
-                    e.stopPropagation();
-                    this.editTheme(theme);
-                  }}
-                >✎</span>
-                <span class="theme-name">${theme.name}</span>
-                <span class="theme-detail">
-                  ${theme.mode === "effect"
-                    ? theme.effect
-                    : `${theme.brightness}%${
-                        theme.colour?.mode === "kelvin"
-                          ? ` · ${theme.colour.kelvin}K`
-                          : ""
-                      }`}
-                </span>
-                <span class="theme-covers">${theme.covers.join(", ")}</span>
-              </button>
+              <div class="theme-card ${theme.holding ? "holding" : ""}">
+                <button
+                  class="theme-apply"
+                  @click=${() => void this.applyTheme(theme)}
+                  title=${`Apply to ${theme.covers.join(", ")}`}
+                >
+                  <span class="swatch" style="background:${themeSwatch(theme)}"></span>
+                  <span class="theme-text">
+                    <span class="theme-name">${theme.name}</span>
+                    <span class="theme-detail">
+                      ${theme.mode === "effect"
+                        ? theme.effect
+                        : `${theme.brightness}%${
+                            theme.colour?.mode === "kelvin"
+                              ? ` · ${theme.colour.kelvin}K`
+                              : ""
+                          }`}
+                    </span>
+                    <span class="theme-covers">${theme.covers.join(", ")}</span>
+                  </span>
+                </button>
+                <button
+                  class="theme-edit"
+                  @click=${() => this.editTheme(theme)}
+                  title=${`Edit ${theme.name}`}
+                >
+                  Edit
+                </button>
+              </div>
             `
           )}
         </div>
@@ -801,8 +815,10 @@ export class LightcurvePanel extends LitElement {
 
   private renderThemeEditor(theme: Theme): TemplateResult {
     const hs = theme.colour?.hs ?? [30, 80];
+    const existing = this.themes.some((t) => t.id === theme.id);
     return html`
       <div class="editor">
+        <h3>${existing ? `Editing ${theme.name}` : "New theme"}</h3>
         <div class="row">
           <div class="grow">
             <label for="theme-name">Name</label>
@@ -919,9 +935,11 @@ export class LightcurvePanel extends LitElement {
             Cancel
           </button>
           <div class="grow"></div>
-          <button class="secondary" @click=${() => void this.deleteTheme()}>
-            Delete
-          </button>
+          ${existing
+            ? html`<button class="secondary" @click=${() => void this.deleteTheme()}>
+                Delete
+              </button>`
+            : nothing}
         </div>
       </div>
     `;

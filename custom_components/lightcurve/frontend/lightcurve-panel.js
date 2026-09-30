@@ -262,9 +262,9 @@ R.elementStyles = [], R.shadowRootOptions = { mode: "open" }, R[L("elementProper
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const ft = globalThis, wt = (e) => e, et = ft.trustedTypes, _t = et ? et.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, Gt = "$lit$", T = `lit$${Math.random().toFixed(9).slice(2)}$`, Kt = "?" + T, ie = `<${Kt}>`, N = document, W = () => N.createComment(""), F = (e) => e === null || typeof e != "object" && typeof e != "function", mt = Array.isArray, se = (e) => mt(e) || typeof e?.[Symbol.iterator] == "function", ot = `[ 	
+const ft = globalThis, wt = (e) => e, et = ft.trustedTypes, _t = et ? et.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, Gt = "$lit$", T = `lit$${Math.random().toFixed(9).slice(2)}$`, zt = "?" + T, ie = `<${zt}>`, N = document, W = () => N.createComment(""), F = (e) => e === null || typeof e != "object" && typeof e != "function", mt = Array.isArray, se = (e) => mt(e) || typeof e?.[Symbol.iterator] == "function", ot = `[ 	
 \f\r]`, j = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, At = /-->/g, St = />/g, k = RegExp(`>|${ot}(?:([^\\s"'>=/]+)(${ot}*=${ot}*(?:[^ 	
-\f\r"'\`<>=]|("|')|))|$)`, "g"), Mt = /'/g, Et = /"/g, zt = /^(?:script|style|textarea|title)$/i, jt = (e) => (t, ...i) => ({ _$litType$: e, strings: t, values: i }), u = jt(1), f = jt(2), H = Symbol.for("lit-noChange"), m = Symbol.for("lit-nothing"), Tt = /* @__PURE__ */ new WeakMap(), C = N.createTreeWalker(N, 129);
+\f\r"'\`<>=]|("|')|))|$)`, "g"), Mt = /'/g, Et = /"/g, Kt = /^(?:script|style|textarea|title)$/i, jt = (e) => (t, ...i) => ({ _$litType$: e, strings: t, values: i }), d = jt(1), m = jt(2), H = Symbol.for("lit-noChange"), f = Symbol.for("lit-nothing"), Tt = /* @__PURE__ */ new WeakMap(), C = N.createTreeWalker(N, 129);
 function Bt(e, t) {
   if (!mt(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
   return _t !== void 0 ? _t.createHTML(t) : t;
@@ -274,10 +274,10 @@ const re = (e, t) => {
   let r, n = t === 2 ? "<svg>" : t === 3 ? "<math>" : "", o = j;
   for (let a = 0; a < i; a++) {
     const h = e[a];
-    let l, c, d = -1, _ = 0;
-    for (; _ < h.length && (o.lastIndex = _, c = o.exec(h), c !== null); ) _ = o.lastIndex, o === j ? c[1] === "!--" ? o = At : c[1] !== void 0 ? o = St : c[2] !== void 0 ? (zt.test(c[2]) && (r = RegExp("</" + c[2], "g")), o = k) : c[3] !== void 0 && (o = k) : o === k ? c[0] === ">" ? (o = r ?? j, d = -1) : c[1] === void 0 ? d = -2 : (d = o.lastIndex - c[2].length, l = c[1], o = c[3] === void 0 ? k : c[3] === '"' ? Et : Mt) : o === Et || o === Mt ? o = k : o === At || o === St ? o = j : (o = k, r = void 0);
+    let l, c, u = -1, _ = 0;
+    for (; _ < h.length && (o.lastIndex = _, c = o.exec(h), c !== null); ) _ = o.lastIndex, o === j ? c[1] === "!--" ? o = At : c[1] !== void 0 ? o = St : c[2] !== void 0 ? (Kt.test(c[2]) && (r = RegExp("</" + c[2], "g")), o = k) : c[3] !== void 0 && (o = k) : o === k ? c[0] === ">" ? (o = r ?? j, u = -1) : c[1] === void 0 ? u = -2 : (u = o.lastIndex - c[2].length, l = c[1], o = c[3] === void 0 ? k : c[3] === '"' ? Et : Mt) : o === Et || o === Mt ? o = k : o === At || o === St ? o = j : (o = k, r = void 0);
     const x = o === k && e[a + 1].startsWith("/>") ? " " : "";
-    n += o === j ? h + ie : d >= 0 ? (s.push(l), h.slice(0, d) + Gt + h.slice(d) + T + x) : h + T + (d === -2 ? a : x);
+    n += o === j ? h + ie : u >= 0 ? (s.push(l), h.slice(0, u) + Gt + h.slice(u) + T + x) : h + T + (u === -2 ? a : x);
   }
   return [Bt(e, n + (e[i] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), s];
 };
@@ -288,27 +288,27 @@ class V {
     let n = 0, o = 0;
     const a = t.length - 1, h = this.parts, [l, c] = re(t, i);
     if (this.el = V.createElement(l, s), C.currentNode = this.el.content, i === 2 || i === 3) {
-      const d = this.el.content.firstChild;
-      d.replaceWith(...d.childNodes);
+      const u = this.el.content.firstChild;
+      u.replaceWith(...u.childNodes);
     }
     for (; (r = C.nextNode()) !== null && h.length < a; ) {
       if (r.nodeType === 1) {
-        if (r.hasAttributes()) for (const d of r.getAttributeNames()) if (d.endsWith(Gt)) {
-          const _ = c[o++], x = r.getAttribute(d).split(T), p = /([.?@])?(.*)/.exec(_);
-          h.push({ type: 1, index: n, name: p[2], strings: x, ctor: p[1] === "." ? oe : p[1] === "?" ? ae : p[1] === "@" ? he : rt }), r.removeAttribute(d);
-        } else d.startsWith(T) && (h.push({ type: 6, index: n }), r.removeAttribute(d));
-        if (zt.test(r.tagName)) {
-          const d = r.textContent.split(T), _ = d.length - 1;
+        if (r.hasAttributes()) for (const u of r.getAttributeNames()) if (u.endsWith(Gt)) {
+          const _ = c[o++], x = r.getAttribute(u).split(T), p = /([.?@])?(.*)/.exec(_);
+          h.push({ type: 1, index: n, name: p[2], strings: x, ctor: p[1] === "." ? oe : p[1] === "?" ? ae : p[1] === "@" ? he : rt }), r.removeAttribute(u);
+        } else u.startsWith(T) && (h.push({ type: 6, index: n }), r.removeAttribute(u));
+        if (Kt.test(r.tagName)) {
+          const u = r.textContent.split(T), _ = u.length - 1;
           if (_ > 0) {
             r.textContent = et ? et.emptyScript : "";
-            for (let x = 0; x < _; x++) r.append(d[x], W()), C.nextNode(), h.push({ type: 2, index: ++n });
-            r.append(d[_], W());
+            for (let x = 0; x < _; x++) r.append(u[x], W()), C.nextNode(), h.push({ type: 2, index: ++n });
+            r.append(u[_], W());
           }
         }
-      } else if (r.nodeType === 8) if (r.data === Kt) h.push({ type: 2, index: n });
+      } else if (r.nodeType === 8) if (r.data === zt) h.push({ type: 2, index: n });
       else {
-        let d = -1;
-        for (; (d = r.data.indexOf(T, d + 1)) !== -1; ) h.push({ type: 7, index: n }), d += T.length - 1;
+        let u = -1;
+        for (; (u = r.data.indexOf(T, u + 1)) !== -1; ) h.push({ type: 7, index: n }), u += T.length - 1;
       }
       n++;
     }
@@ -357,7 +357,7 @@ class q {
     return this._$AM?._$AU ?? this._$Cv;
   }
   constructor(t, i, s, r) {
-    this.type = 2, this._$AH = m, this._$AN = void 0, this._$AA = t, this._$AB = i, this._$AM = s, this.options = r, this._$Cv = r?.isConnected ?? !0;
+    this.type = 2, this._$AH = f, this._$AN = void 0, this._$AA = t, this._$AB = i, this._$AM = s, this.options = r, this._$Cv = r?.isConnected ?? !0;
   }
   get parentNode() {
     let t = this._$AA.parentNode;
@@ -371,7 +371,7 @@ class q {
     return this._$AB;
   }
   _$AI(t, i = this) {
-    t = D(this, t, i), F(t) ? t === m || t == null || t === "" ? (this._$AH !== m && this._$AR(), this._$AH = m) : t !== this._$AH && t !== H && this._(t) : t._$litType$ !== void 0 ? this.$(t) : t.nodeType !== void 0 ? this.T(t) : se(t) ? this.k(t) : this._(t);
+    t = D(this, t, i), F(t) ? t === f || t == null || t === "" ? (this._$AH !== f && this._$AR(), this._$AH = f) : t !== this._$AH && t !== H && this._(t) : t._$litType$ !== void 0 ? this.$(t) : t.nodeType !== void 0 ? this.T(t) : se(t) ? this.k(t) : this._(t);
   }
   O(t) {
     return this._$AA.parentNode.insertBefore(t, this._$AB);
@@ -380,7 +380,7 @@ class q {
     this._$AH !== t && (this._$AR(), this._$AH = this.O(t));
   }
   _(t) {
-    this._$AH !== m && F(this._$AH) ? this._$AA.nextSibling.data = t : this.T(N.createTextNode(t)), this._$AH = t;
+    this._$AH !== f && F(this._$AH) ? this._$AA.nextSibling.data = t : this.T(N.createTextNode(t)), this._$AH = t;
   }
   $(t) {
     const { values: i, _$litType$: s } = t, r = typeof s == "number" ? this._$AC(t) : (s.el === void 0 && (s.el = V.createElement(Bt(s.h, s.h[0]), this.options)), s);
@@ -419,7 +419,7 @@ class rt {
     return this._$AM._$AU;
   }
   constructor(t, i, s, r, n) {
-    this.type = 1, this._$AH = m, this._$AN = void 0, this.element = t, this.name = i, this._$AM = r, this.options = n, s.length > 2 || s[0] !== "" || s[1] !== "" ? (this._$AH = Array(s.length - 1).fill(new String()), this.strings = s) : this._$AH = m;
+    this.type = 1, this._$AH = f, this._$AN = void 0, this.element = t, this.name = i, this._$AM = r, this.options = n, s.length > 2 || s[0] !== "" || s[1] !== "" ? (this._$AH = Array(s.length - 1).fill(new String()), this.strings = s) : this._$AH = f;
   }
   _$AI(t, i = this, s, r) {
     const n = this.strings;
@@ -428,12 +428,12 @@ class rt {
     else {
       const a = t;
       let h, l;
-      for (t = n[0], h = 0; h < n.length - 1; h++) l = D(this, a[s + h], i, h), l === H && (l = this._$AH[h]), o ||= !F(l) || l !== this._$AH[h], l === m ? t = m : t !== m && (t += (l ?? "") + n[h + 1]), this._$AH[h] = l;
+      for (t = n[0], h = 0; h < n.length - 1; h++) l = D(this, a[s + h], i, h), l === H && (l = this._$AH[h]), o ||= !F(l) || l !== this._$AH[h], l === f ? t = f : t !== f && (t += (l ?? "") + n[h + 1]), this._$AH[h] = l;
     }
     o && !r && this.j(t);
   }
   j(t) {
-    t === m ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, t ?? "");
+    t === f ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, t ?? "");
   }
 }
 class oe extends rt {
@@ -441,7 +441,7 @@ class oe extends rt {
     super(...arguments), this.type = 3;
   }
   j(t) {
-    this.element[this.name] = t === m ? void 0 : t;
+    this.element[this.name] = t === f ? void 0 : t;
   }
 }
 class ae extends rt {
@@ -449,7 +449,7 @@ class ae extends rt {
     super(...arguments), this.type = 4;
   }
   j(t) {
-    this.element.toggleAttribute(this.name, !!t && t !== m);
+    this.element.toggleAttribute(this.name, !!t && t !== f);
   }
 }
 class he extends rt {
@@ -457,8 +457,8 @@ class he extends rt {
     super(t, i, s, r, n), this.type = 5;
   }
   _$AI(t, i = this) {
-    if ((t = D(this, t, i, 0) ?? m) === H) return;
-    const s = this._$AH, r = t === m && s !== m || t.capture !== s.capture || t.once !== s.once || t.passive !== s.passive, n = t !== m && (s === m || r);
+    if ((t = D(this, t, i, 0) ?? f) === H) return;
+    const s = this._$AH, r = t === f && s !== f || t.capture !== s.capture || t.once !== s.once || t.passive !== s.passive, n = t !== f && (s === f || r);
     r && this.element.removeEventListener(this.name, this, s), n && this.element.addEventListener(this.name, this, t), this._$AH = t;
   }
   handleEvent(t) {
@@ -656,7 +656,7 @@ let b = class extends O {
   }
   render() {
     const e = this.totalHeight;
-    return u`
+    return d`
       <svg
         viewBox="0 0 ${this.width} ${e}"
         @pointerdown=${this.onPointerDown}
@@ -681,26 +681,26 @@ let b = class extends O {
       width: this.plotWidth,
       height: I
     }, t = this.scrubMinute === null ? null : A(this.scrubMinute, e);
-    return f`
+    return m`
       <g>
         <rect class="scrub-bar" x=${e.left} y=${e.top}
               width=${e.width} height=${e.height} rx=${I / 2} />
         ${this.samples.map((i, s) => {
       const r = this.samples[s + 1], n = A(i.minute, e), o = r ? A(r.minute, e) : e.left + e.width, a = i.rgb ?? [80, 80, 80];
-      return f`<rect x=${n} y=${e.top + 7}
+      return m`<rect x=${n} y=${e.top + 7}
                            width=${Math.max(1, o - n)} height=${I - 14}
                            fill="rgb(${a[0]},${a[1]},${a[2]})" />`;
     })}
         <text class="axis-label" x=${e.left - 6} y=${e.top + I / 2 + 3}
               text-anchor="end">preview</text>
-        ${t === null ? "" : f`<circle class="scrub-handle" cx=${t}
+        ${t === null ? "" : m`<circle class="scrub-handle" cx=${t}
                         cy=${e.top + I / 2} r="9" />`}
       </g>
     `;
   }
   renderLane(e, t) {
     const i = this.plotFor(e), r = this.samples.filter((n) => this.laneApplies(e, n)).length === 0 && e !== "brightness";
-    return f`
+    return m`
       <g>
         <text class="lane-title" x=${i.left} y=${i.top - 7}>${t}</text>
         <rect class="lane-bg" x=${i.left} y=${i.top}
@@ -712,7 +712,7 @@ let b = class extends O {
         ${this.renderNow(i)}
         ${this.renderScrub(i)}
         ${this.renderHandles(i, e)}
-        ${r ? f`
+        ${r ? m`
             <rect class="inactive-wash" x=${i.left} y=${i.top}
                   width=${i.width} height=${i.height} rx="6" />
             <text class="inactive-note" x=${i.left + i.width / 2}
@@ -730,8 +730,8 @@ let b = class extends O {
     const i = [];
     for (let r = 0; r <= 24; r += 3) {
       const n = A(r * 60, e);
-      i.push(f`<line class="grid" x1=${n} y1=${e.top} x2=${n}
-                          y2=${e.top + e.height} />`), t === "colour" && i.push(f`<text class="axis-label" x=${n} y=${e.top + e.height + 16}
+      i.push(m`<line class="grid" x1=${n} y1=${e.top} x2=${n}
+                          y2=${e.top + e.height} />`), t === "colour" && i.push(m`<text class="axis-label" x=${n} y=${e.top + e.height + 16}
                              text-anchor="middle">${String(r).padStart(2, "0")}</text>`);
     }
     const s = t === "brightness" ? [
@@ -746,24 +746,24 @@ let b = class extends O {
       { value: 0, y: e.top + e.height, text: "0°" }
     ];
     for (const r of s)
-      i.push(f`<text class="axis-label" x=${e.left - 6} y=${r.y + 3}
+      i.push(m`<text class="axis-label" x=${e.left - 6} y=${r.y + 3}
                            text-anchor="end">${r.text}</text>`);
-    return f`${i}`;
+    return m`${i}`;
   }
   /** The gradient strip under each lane, drawn from the engine's own colours. */
   renderGradientStrip(e, t) {
-    if (this.samples.length === 0) return f``;
+    if (this.samples.length === 0) return m``;
     const i = e.top + e.height + (t === "colour" ? 22 : 6), s = this.samples.map((r, n) => {
       const o = this.samples[n + 1], a = A(r.minute, e), h = o ? A(o.minute, e) : e.left + e.width, l = r.rgb ?? [80, 80, 80], c = !this.laneApplies(t, r);
-      return f`<rect x=${a} y=${i} width=${Math.max(1, h - a)}
+      return m`<rect x=${a} y=${i} width=${Math.max(1, h - a)}
                        height=${lt - 10}
                        fill="rgb(${l[0]},${l[1]},${l[2]})"
                        opacity=${c ? 0.25 : 1} />`;
     });
-    return f`<g>${s}</g>`;
+    return m`<g>${s}</g>`;
   }
   renderCurve(e, t) {
-    if (this.samples.length < 2) return f``;
+    if (this.samples.length < 2) return m``;
     const i = [];
     for (const s of this.samples) {
       const r = this.laneApplies(t, s), n = this.valueY(e, t, s);
@@ -771,8 +771,8 @@ let b = class extends O {
       const o = `${A(s.minute, e).toFixed(1)},${n.toFixed(1)}`, a = i[i.length - 1];
       a && a.active === r ? a.points.push(o) : i.push({ active: r, points: [o] });
     }
-    return f`${i.filter((s) => s.points.length > 1).map(
-      (s) => f`<polyline class="curve ${s.active ? "" : "muted"}"
+    return m`${i.filter((s) => s.points.length > 1).map(
+      (s) => m`<polyline class="curve ${s.active ? "" : "muted"}"
                         points=${s.points.join(" ")} />`
     )}`;
   }
@@ -787,10 +787,10 @@ let b = class extends O {
     return e.top + (1 - s / 360) * e.height;
   }
   renderSunMarkers(e) {
-    return f`${Object.entries(this.sun).map(([t, i]) => {
-      if (!i) return f``;
+    return m`${Object.entries(this.sun).map(([t, i]) => {
+      if (!i) return m``;
       const s = A(i.minute, e);
-      return f`<line class="sun" x1=${s} y1=${e.top} x2=${s}
+      return m`<line class="sun" x1=${s} y1=${e.top} x2=${s}
                        y2=${e.top + e.height}>
                    <title>${t} ${P(i.minute)}</title>
                  </line>`;
@@ -798,13 +798,13 @@ let b = class extends O {
   }
   renderNow(e) {
     const t = A(this.nowMinute, e);
-    return f`<line class="now" x1=${t} y1=${e.top} x2=${t}
+    return m`<line class="now" x1=${t} y1=${e.top} x2=${t}
                      y2=${e.top + e.height} />`;
   }
   renderScrub(e) {
-    if (this.scrubMinute === null) return f``;
+    if (this.scrubMinute === null) return m``;
     const t = A(this.scrubMinute, e);
-    return f`<line class="scrub" x1=${t} y1=${e.top} x2=${t}
+    return m`<line class="scrub" x1=${t} y1=${e.top} x2=${t}
                      y2=${e.top + e.height} />`;
   }
   handlesFor(e, t) {
@@ -825,9 +825,9 @@ let b = class extends O {
     return e.top + (1 - s / 360) * e.height;
   }
   renderHandles(e, t) {
-    return f`${this.handlesFor(e, t).map((i) => {
+    return m`${this.handlesFor(e, t).map((i) => {
       const s = this.keyframes.find((n) => n.id === i.id), r = s.mode === "kelvin" ? "var(--primary-color, #03a9f4)" : `hsl(${s.hs?.[0] ?? 0}, ${s.hs?.[1] ?? 100}%, 55%)`;
-      return f`
+      return m`
         <g>
           <circle class="hit" cx=${i.x} cy=${i.y} r="22"
                   data-id=${i.id} data-lane=${t} />
@@ -1118,7 +1118,7 @@ let G = class extends O {
   }
   render() {
     const e = we(this.hue, this.saturation, U / 2, Rt), t = 12 + this.brightness / 100 * 43;
-    return u`
+    return d`
       <div
         class="wheel"
         @pointerdown=${this.onDown}
@@ -1292,14 +1292,14 @@ function Ee(e, t) {
   const i = Math.min(1, Math.abs(e) / t);
   return Math.cos(i * Math.PI / 2) ** 2;
 }
-function K(e, t) {
+function z(e, t) {
   const i = Math.abs(e - t);
   return Math.min(i, E - i);
 }
 function Te(e, t, i, s) {
   const { radiusMinutes: r, min: n, max: o, wrapValue: a } = s;
   return e.map((h) => {
-    const l = Ee(K(h.minute, t), r);
+    const l = Ee(z(h.minute, t), r);
     if (l === 0) return h;
     let c = h.value + i * l;
     return a ? c = (c % o + o) % o : c = Math.min(o, Math.max(n, c)), { minute: h.minute, value: c };
@@ -1312,7 +1312,7 @@ function ke(e, t, i, s) {
 function Pe(e, t) {
   let i = null, s = 1 / 0;
   for (const r of e) {
-    const n = K(r.minute, t);
+    const n = z(r.minute, t);
     n < s && (s = n, i = r);
   }
   return i;
@@ -1324,7 +1324,7 @@ const Oe = 48, Ne = 5;
 function Ie(e, t) {
   let i = null, s = 1 / 0;
   for (const r of e) {
-    const n = K(r.minute, t);
+    const n = z(r.minute, t);
     n < s && (s = n, i = r);
   }
   return i ? i.value : null;
@@ -1344,29 +1344,29 @@ function Re(e) {
   return `${i}:${s}`;
 }
 function Ue(e, t, i, s, r, n = Oe) {
-  const o = new Map(t.map((p) => [p.id, p.minute])), a = (p) => K(p, r.centre) <= r.radius, h = e.map((p) => {
+  const o = new Map(t.map((p) => [p.id, p.minute])), a = (p) => z(p, r.centre) <= r.radius, h = e.map((p) => {
     const Y = o.get(p.id);
     if (Y === void 0 || !a(Y)) return p;
     const S = Ie(s, Y);
     if (S === null) return p;
-    const z = JSON.parse(JSON.stringify(p));
-    return Ut(z, i, S), z;
+    const K = JSON.parse(JSON.stringify(p));
+    return Ut(K, i, S), K;
   }), l = s.filter((p) => a(p.minute));
   if (l.length < 3) return h;
-  const c = i === "brightness" ? 2.5 : i === "warmth" ? 90 : 8, { points: d } = Me(l, n, c), _ = h.map((p) => o.get(p.id)).filter((p) => p !== void 0), x = [];
-  for (const p of d) {
+  const c = i === "brightness" ? 2.5 : i === "warmth" ? 90 : 8, { points: u } = Me(l, n, c), _ = h.map((p) => o.get(p.id)).filter((p) => p !== void 0), x = [];
+  for (const p of u) {
     if (h.length + x.length >= n) break;
     if ([..._, ...x.map((X) => He(X))].some(
-      (X) => X !== null && K(X, p.minute) < Ne
+      (X) => X !== null && z(X, p.minute) < Ne
     )) continue;
-    const S = De(h, o, p.minute), z = {
+    const S = De(h, o, p.minute), K = {
       id: `k_${Math.random().toString(36).slice(2, 8)}`,
       time: { type: "fixed", value: Re(p.minute) },
       colour: S ? JSON.parse(JSON.stringify(S.colour)) : { mode: "kelvin", kelvin: 3e3 },
       brightness: S ? S.brightness : 50,
       easing: S ? S.easing : "ease_in_out"
     };
-    Ut(z, i, p.value), x.push(z);
+    Ut(K, i, p.value), x.push(K);
   }
   return [...h, ...x];
 }
@@ -1380,17 +1380,17 @@ function De(e, t, i) {
   for (const n of e) {
     const o = t.get(n.id);
     if (o === void 0) continue;
-    const a = K(o, i);
+    const a = z(o, i);
     a < r && (r = a, s = n);
   }
   return s;
 }
-var Ge = Object.defineProperty, Ke = Object.getOwnPropertyDescriptor, $ = (e, t, i, s) => {
-  for (var r = s > 1 ? void 0 : s ? Ke(t, i) : t, n = e.length - 1, o; n >= 0; n--)
+var Ge = Object.defineProperty, ze = Object.getOwnPropertyDescriptor, $ = (e, t, i, s) => {
+  for (var r = s > 1 ? void 0 : s ? ze(t, i) : t, n = e.length - 1, o; n >= 0; n--)
     (o = e[n]) && (r = (s ? o(t, i, r) : o(r)) || r);
   return s && r && Ge(t, i, r), r;
 };
-const ze = 300;
+const Ke = 300;
 let g = class extends O {
   constructor() {
     super(...arguments), this.narrow = !1, this.profiles = [], this.groups = [], this.themes = [], this.editingTheme = null, this.profile = null, this.variant = "default", this.samples = [], this.resolved = [], this.sun = {}, this.issues = [], this.selectedId = null, this.previewGroupId = null, this.scrubMinute = null, this.dirty = !1, this.busy = !1, this.error = null, this.graphWidth = 900, this.lastScrubAt = 0, this.morphRegion = null, this.onKeyframeMove = (e) => {
@@ -1432,7 +1432,7 @@ let g = class extends O {
     }, this.onScrub = (e) => {
       this.scrubMinute = e.detail.minute;
       const t = Date.now();
-      t - this.lastScrubAt < ze || (this.lastScrubAt = t, this.previewAt(e.detail.minute));
+      t - this.lastScrubAt < Ke || (this.lastScrubAt = t, this.previewAt(e.detail.minute));
     }, this.onScrubEnd = () => {
       this.scrubMinute = null, this.stopPreview();
     };
@@ -1643,14 +1643,14 @@ let g = class extends O {
   // --- rendering ------------------------------------------------------------
   render() {
     const e = this.groups.find((t) => t.id === this.previewGroupId);
-    return u`
-      ${this.error ? u`<div class="error-banner">${this.error}</div>` : m}
+    return d`
+      ${this.error ? d`<div class="error-banner">${this.error}</div>` : f}
       <div class="bar">
         <div>
           <label for="profile">Profile</label>
           <select id="profile" @change=${(t) => void this.openProfile(t.target.value)}>
             ${this.profiles.map(
-      (t) => u`<option value=${t.id} ?selected=${t.id === this.profile?.id}>
+      (t) => d`<option value=${t.id} ?selected=${t.id === this.profile?.id}>
                 ${t.name}${t.used_by.length > 1 ? ` (${t.used_by.length} rooms)` : ""}
               </option>`
     )}
@@ -1662,7 +1662,7 @@ let g = class extends O {
       this.previewGroupId = t.target.value;
     }}>
             ${this.groups.map(
-      (t) => u`<option value=${t.id} ?selected=${t.id === this.previewGroupId}>
+      (t) => d`<option value=${t.id} ?selected=${t.id === this.previewGroupId}>
                 ${t.name}
               </option>`
     )}
@@ -1710,22 +1710,22 @@ let g = class extends O {
 
       ${this.renderThemes()}
 
-      ${this.issues.length > 0 ? u`<div class="card">
+      ${this.issues.length > 0 ? d`<div class="card">
             <ul class="issues">
               ${this.issues.map(
-      (t) => u`<li class=${t.level}>${t.message}</li>`
+      (t) => d`<li class=${t.level}>${t.message}</li>`
     )}
             </ul>
-          </div>` : m}
+          </div>` : f}
 
-      ${this.selected ? this.renderSheet(this.selected) : m}
+      ${this.selected ? this.renderSheet(this.selected) : f}
     `;
   }
   /** Buttons for the saved themes, and the editor for one of them. */
   renderThemes() {
-    if (this.themes.length === 0) return u`${m}`;
+    if (this.themes.length === 0) return d`${f}`;
     const e = this.themes.some((t) => t.holding);
-    return u`
+    return d`
       <div class="card">
         <div class="themes-head">
           <h2>Themes</h2>
@@ -1743,29 +1743,30 @@ let g = class extends O {
         </div>
         <div class="themes">
           ${this.themes.map(
-      (t) => u`
-              <button
-                class="theme ${t.holding ? "holding" : ""}"
-                @click=${() => void this.applyTheme(t)}
-                title=${t.covers.join(", ")}
-              >
-                <span
-                  class="swatch"
-                  style="background:${je(t)}"
-                ></span>
-                <span
-                  class="edit"
-                  title="Edit"
-                  @click=${(i) => {
-        i.stopPropagation(), this.editTheme(t);
-      }}
-                >✎</span>
-                <span class="theme-name">${t.name}</span>
-                <span class="theme-detail">
-                  ${t.mode === "effect" ? t.effect : `${t.brightness}%${t.colour?.mode === "kelvin" ? ` · ${t.colour.kelvin}K` : ""}`}
-                </span>
-                <span class="theme-covers">${t.covers.join(", ")}</span>
-              </button>
+      (t) => d`
+              <div class="theme-card ${t.holding ? "holding" : ""}">
+                <button
+                  class="theme-apply"
+                  @click=${() => void this.applyTheme(t)}
+                  title=${`Apply to ${t.covers.join(", ")}`}
+                >
+                  <span class="swatch" style="background:${je(t)}"></span>
+                  <span class="theme-text">
+                    <span class="theme-name">${t.name}</span>
+                    <span class="theme-detail">
+                      ${t.mode === "effect" ? t.effect : `${t.brightness}%${t.colour?.mode === "kelvin" ? ` · ${t.colour.kelvin}K` : ""}`}
+                    </span>
+                    <span class="theme-covers">${t.covers.join(", ")}</span>
+                  </span>
+                </button>
+                <button
+                  class="theme-edit"
+                  @click=${() => this.editTheme(t)}
+                  title=${`Edit ${t.name}`}
+                >
+                  Edit
+                </button>
+              </div>
             `
     )}
         </div>
@@ -1773,32 +1774,33 @@ let g = class extends O {
           A theme holds its values against the curve. Switch the room off and on, or
           press Back to curve, to release it.
         </p>
-        ${this.editingTheme ? this.renderThemeEditor(this.editingTheme) : m}
+        ${this.editingTheme ? this.renderThemeEditor(this.editingTheme) : f}
       </div>
     `;
   }
   renderThemeEditor(e) {
-    const t = e.colour?.hs ?? [30, 80];
-    return u`
+    const t = e.colour?.hs ?? [30, 80], i = this.themes.some((s) => s.id === e.id);
+    return d`
       <div class="editor">
+        <h3>${i ? `Editing ${e.name}` : "New theme"}</h3>
         <div class="row">
           <div class="grow">
             <label for="theme-name">Name</label>
             <input
               id="theme-name"
               .value=${e.name}
-              @change=${(i) => this.patchTheme({ name: i.target.value })}
+              @change=${(s) => this.patchTheme({ name: s.target.value })}
             />
           </div>
           <div>
             <label for="theme-mode">Type</label>
             <select
               id="theme-mode"
-              @change=${(i) => {
-      const s = i.target.value;
+              @change=${(s) => {
+      const r = s.target.value;
       this.patchTheme(
-        s === "effect" ? { mode: s, effect: e.effect ?? "", colour: null, brightness: null } : {
-          mode: s,
+        r === "effect" ? { mode: r, effect: e.effect ?? "", colour: null, brightness: null } : {
+          mode: r,
           effect: null,
           colour: e.colour ?? { mode: "hs", hs: [30, 80] },
           brightness: e.brightness ?? 50
@@ -1816,28 +1818,28 @@ let g = class extends O {
           </div>
         </div>
 
-        ${e.mode === "effect" ? u`<div class="row">
+        ${e.mode === "effect" ? d`<div class="row">
               <div class="grow">
                 <label for="theme-effect">Effect name</label>
                 <input
                   id="theme-effect"
                   .value=${e.effect ?? ""}
                   placeholder="Party"
-                  @change=${(i) => this.patchTheme({ effect: i.target.value })}
+                  @change=${(s) => this.patchTheme({ effect: s.target.value })}
                 />
                 <p class="hint">
                   The bulb runs this itself. It must be one your bulbs offer — check
                   the light's effect list in Developer Tools.
                 </p>
               </div>
-            </div>` : u`
+            </div>` : d`
               <lightcurve-colour-wheel
                 .hue=${t[0]}
                 .saturation=${t[1]}
                 .brightness=${e.brightness ?? 50}
-                @colour-change=${(i) => this.patchTheme({
-      colour: { mode: "hs", hs: [i.detail.hue, i.detail.saturation] },
-      brightness: i.detail.brightness
+                @colour-change=${(s) => this.patchTheme({
+      colour: { mode: "hs", hs: [s.detail.hue, s.detail.saturation] },
+      brightness: s.detail.brightness
     })}
               ></lightcurve-colour-wheel>
             `}
@@ -1849,19 +1851,19 @@ let g = class extends O {
               id="theme-groups"
               multiple
               size=${Math.min(4, Math.max(2, this.groups.length))}
-              @change=${(i) => {
-      const s = i.target;
+              @change=${(s) => {
+      const r = s.target;
       this.patchTheme({
-        groups: Array.from(s.selectedOptions).map((r) => r.value)
+        groups: Array.from(r.selectedOptions).map((n) => n.value)
       });
     }}
             >
               ${this.groups.map(
-      (i) => u`<option
-                  value=${i.id}
-                  ?selected=${e.groups.includes(i.id)}
+      (s) => d`<option
+                  value=${s.id}
+                  ?selected=${e.groups.includes(s.id)}
                 >
-                  ${i.name}
+                  ${s.name}
                 </option>`
     )}
             </select>
@@ -1876,9 +1878,9 @@ let g = class extends O {
               max="1440"
               .value=${e.hold_minutes === null ? "" : String(e.hold_minutes)}
               placeholder="never"
-              @change=${(i) => {
-      const s = i.target.value;
-      this.patchTheme({ hold_minutes: s === "" ? null : Number(s) });
+              @change=${(s) => {
+      const r = s.target.value;
+      this.patchTheme({ hold_minutes: r === "" ? null : Number(r) });
     }}
             />
           </div>
@@ -1890,9 +1892,9 @@ let g = class extends O {
             Cancel
           </button>
           <div class="grow"></div>
-          <button class="secondary" @click=${() => void this.deleteTheme()}>
-            Delete
-          </button>
+          ${i ? d`<button class="secondary" @click=${() => void this.deleteTheme()}>
+                Delete
+              </button>` : f}
         </div>
       </div>
     `;
@@ -1906,7 +1908,7 @@ let g = class extends O {
     const e = new Map(this.resolved.map((i) => [i.id, i])), t = [...this.keyframes].sort(
       (i, s) => (e.get(i.id)?.minute ?? 0) - (e.get(s.id)?.minute ?? 0)
     );
-    return u`
+    return d`
       <div class="card">
         <div class="themes-head">
           <h2>Keyframes</h2>
@@ -1930,13 +1932,13 @@ let g = class extends O {
   }
   renderKeyframeRow(e, t) {
     const i = t.get(e.id), s = e.time.type === "sun", r = e.colour.mode === "kelvin" ? Wt(e.colour.kelvin ?? 3e3) : Lt(e.colour.hs?.[0] ?? 0, e.colour.hs?.[1] ?? 100);
-    return u`
+    return d`
       <tr class=${this.selectedId === e.id ? "selected" : ""}
           @click=${() => this.selectedId = e.id}>
         <td>
-          ${s ? u`<span class="sun-pill" title="Follows the sun, so it moves daily">
+          ${s ? d`<span class="sun-pill" title="Follows the sun, so it moves daily">
                 ${e.time.event}${(e.time.offset_min ?? 0) !== 0 ? ` ${e.time.offset_min > 0 ? "+" : ""}${e.time.offset_min}m` : ""}
-              </span>` : u`<input
+              </span>` : d`<input
                 class="cell"
                 .value=${e.time.value ?? "00:00"}
                 @change=${(n) => {
@@ -1952,7 +1954,7 @@ let g = class extends O {
         </td>
         <td>
           <span class="swatch inline" style="background:${r}"></span>
-          ${e.colour.mode === "kelvin" ? u`<input
+          ${e.colour.mode === "kelvin" ? d`<input
                 class="cell narrow"
                 type="number"
                 min="1000"
@@ -1967,7 +1969,7 @@ let g = class extends O {
         };
       }), this.refreshGraph();
     }}
-              />K` : u`<input
+              />K` : d`<input
                 class="cell narrow"
                 type="number"
                 min="0"
@@ -2008,7 +2010,7 @@ let g = class extends O {
     }}
           >
             ${["linear", "ease_in_out", "step"].map(
-      (n) => u`<option value=${n} ?selected=${e.easing === n}>
+      (n) => d`<option value=${n} ?selected=${e.easing === n}>
                 ${n}
               </option>`
     )}
@@ -2027,12 +2029,12 @@ let g = class extends O {
     `;
   }
   renderSheet(e) {
-    return u`
+    return d`
       <div class="sheet">
         <div class="row">
           <div>
             <label for="time">Time</label>
-            ${e.time.type === "sun" ? u`<input id="time" .value=${`${e.time.event} ${e.time.offset_min ?? 0}m`} readonly />` : u`<input
+            ${e.time.type === "sun" ? d`<input id="time" .value=${`${e.time.event} ${e.time.offset_min ?? 0}m`} readonly />` : d`<input
                   id="time"
                   .value=${e.time.value ?? "00:00"}
                   @change=${(t) => {
@@ -2088,7 +2090,7 @@ let g = class extends O {
     }}
             >
               ${["linear", "ease_in_out", "step"].map(
-      (t) => u`<option value=${t} ?selected=${e.easing === t}>
+      (t) => d`<option value=${t} ?selected=${e.easing === t}>
                   ${t}
                 </option>`
     )}
@@ -2196,10 +2198,12 @@ g.styles = ut`
     .hint { color: var(--secondary-text-color, #777); font-size: 13px; }
     .themes-head {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      justify-content: space-between;
+      gap: 8px;
       margin: 0 0 12px;
     }
+    .themes-head h2 { margin-right: auto; }
     .themes-head h2 {
       margin: 0;
       font-size: 15px;
@@ -2213,49 +2217,61 @@ g.styles = ut`
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       gap: 10px;
     }
-    button.theme {
+    .theme-card {
       display: flex;
       flex-direction: column;
-      align-items: flex-start;
-      gap: 2px;
-      padding: 12px 14px;
-      min-height: 64px;
-      text-align: left;
-      background: var(--secondary-background-color, #eee);
-      color: var(--primary-text-color, #222);
+      border-radius: 8px;
+      overflow: hidden;
       border: 2px solid transparent;
+      background: var(--secondary-background-color, #eee);
     }
-    button.theme.holding {
+    .theme-card.holding {
       border-color: var(--primary-color, #03a9f4);
       background: color-mix(in srgb, var(--primary-color, #03a9f4) 14%, transparent);
     }
-    .theme-name { font-weight: 600; }
-    button.theme { position: relative; padding-left: 34px; }
+    button.theme-apply {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      min-height: 64px;
+      text-align: left;
+      background: transparent;
+      color: var(--primary-text-color, #222);
+      border-radius: 0;
+    }
+    .theme-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    /* A separate control rather than one nested inside the apply button: a click
+       target inside another click target is both hard to hit and easy to trigger
+       by accident. */
+    button.theme-edit {
+      border-radius: 0;
+      min-height: 38px;
+      padding: 8px;
+      font-size: 13px;
+      background: rgba(0, 0, 0, 0.06);
+      color: var(--primary-text-color, #222);
+      border-top: 1px solid var(--divider-color, #ddd);
+    }
+    button.theme-edit:hover { background: rgba(0, 0, 0, 0.12); }
     .swatch {
-      position: absolute;
-      left: 12px;
-      top: 14px;
+      flex: 0 0 auto;
       width: 14px;
       height: 14px;
+      margin-top: 3px;
       border-radius: 50%;
       box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
     }
     .swatch.inline {
-      position: static;
       display: inline-block;
-      margin-right: 6px;
+      margin: 0 6px 0 0;
       vertical-align: -2px;
     }
-    .edit {
-      position: absolute;
-      right: 8px;
-      top: 6px;
-      padding: 4px 6px;
-      border-radius: 6px;
-      opacity: 0.55;
-      font-size: 13px;
+    .editor h3 {
+      margin: 0;
+      font-size: 14px;
+      color: var(--primary-text-color, #222);
     }
-    .edit:hover { opacity: 1; background: rgba(0, 0, 0, 0.08); }
     .editor {
       margin-top: 16px;
       padding-top: 16px;
