@@ -80,6 +80,21 @@ export interface Group {
   target: Sample | null;
 }
 
+export interface Look {
+  id: string;
+  name: string;
+  mode: "static" | "effect";
+  colour: KeyframeColour | null;
+  brightness: number | null;
+  effect: string | null;
+  groups: string[];
+  hold_minutes: number | null;
+  /** Group names, resolved for display. */
+  covers: string[];
+  /** Every group it covers has stopped following the curve. */
+  holding: boolean;
+}
+
 export interface ValidationIssue {
   level: "error" | "warning";
   code: string;

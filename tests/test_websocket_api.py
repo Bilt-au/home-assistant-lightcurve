@@ -325,3 +325,70 @@ async def test_commands_require_an_admin(
     reply = await call(client, {"type": "lightcurve/profiles/list"})
     assert not reply["success"]
     assert reply["error"]["code"] == "unauthorized"
+
+
+# ----------------------------------------------------------------------- looks
+
+
+async def test_looks_list_says_what_each_one_covers(ws):
+    reply = await call(ws, {"type": "lightcurve/looks/list"})
+    assert reply["success"]
+    looks = {look["name"]: look for look in reply["result"]["looks"]}
+    assert set(looks) == {"Mood", "Movie", "Disco"}
+    # The seeded looks cover no group explicitly, which means all of them.
+    assert looks["Movie"]["covers"] == ["Toilet"]
+    assert looks["Disco"]["effect"] == "Party"
+    assert looks["Movie"]["holding"] is False
+
+
+async def test_applying_a_look_reaches_the_lights(hass, ws):
+    from pytest_homeassistant_custom_component.common import async_mock_service
+
+    calls = async_mock_service(hass, "light", "turn_on")
+    with freeze_time(MORNING_UTC):
+        reply = await call(ws, {"type": "lightcurve/looks/apply", "look_id": "l_movie"})
+    assert reply["success"], reply.get("error")
+    assert reply["result"]["applied"] == ["g_toilet"]
+    assert calls[0].data["brightness_pct"] == 5
+
+
+async def test_an_applied_look_shows_as_holding(hass, ws):
+    from pytest_homeassistant_custom_component.common import async_mock_service
+
+    async_mock_service(hass, "light", "turn_on")
+    with freeze_time(MORNING_UTC):
+        await call(ws, {"type": "lightcurve/looks/apply", "look_id": "l_mood"})
+        reply = await call(ws, {"type": "lightcurve/looks/list"})
+    holding = {look["name"]: look["holding"] for look in reply["result"]["looks"]}
+    assert holding["Mood"] is True
+
+
+async def test_releasing_hands_the_lights_back_to_the_curve(hass, ws):
+    from pytest_homeassistant_custom_component.common import async_mock_service
+
+    async_mock_service(hass, "light", "turn_on")
+    with freeze_time(MORNING_UTC):
+        await call(ws, {"type": "lightcurve/looks/apply", "look_id": "l_mood"})
+        reply = await call(ws, {"type": "lightcurve/looks/release"})
+    assert reply["success"]
+    coordinator = next(iter(hass.data["lightcurve"].values()))
+    assert coordinator.runtime("g_toilet").overridden is False
+
+
+async def test_a_look_that_reaches_nothing_reports_an_error(hass, ws):
+    """A button that silently does nothing is worse than one that says why."""
+    from pytest_homeassistant_custom_component.common import async_mock_service
+
+    async_mock_service(hass, "light", "turn_on")
+    # Disco needs the Party effect, which these test bulbs do not advertise.
+    with freeze_time(MORNING_UTC):
+        reply = await call(ws, {"type": "lightcurve/looks/apply", "look_id": "l_disco"})
+    assert not reply["success"]
+    assert reply["error"]["code"] == "not_applied"
+    assert "effect" in reply["error"]["message"]
+
+
+async def test_applying_an_unknown_look_errors(ws):
+    reply = await call(ws, {"type": "lightcurve/looks/apply", "look_id": "nope"})
+    assert not reply["success"]
+    assert reply["error"]["code"] == "not_found"

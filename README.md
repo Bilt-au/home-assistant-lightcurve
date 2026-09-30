@@ -82,6 +82,13 @@ hardware cannot enter.
 - **The gradient strip** under each lane is drawn from colours the engine computed,
   not the browser's guess at what 2700 K looks like.
 
+The panel also carries a button per look, so Mood, Movie and Disco can be triggered
+without reaching for Siri or building a dashboard card. A look that is currently
+holding is outlined, and **Back to curve** releases every room without needing to
+switch anything off and on. They are labelled *looks* rather than themes because Home
+Assistant already uses "Themes" for frontend appearance, and two unrelated things
+sharing a word in the same interface is worse than an unfamiliar one.
+
 Validation runs as you edit and samples the whole year, because the failures that
 matter here are seasonal: a profile that is fine in September can have two keyframes
 collide in June, or a sun keyframe drift inside the red night section and stop the

@@ -36,6 +36,9 @@ def async_register(hass: HomeAssistant) -> None:
         groups_list,
         groups_save,
         groups_delete,
+        looks_list,
+        looks_apply,
+        looks_release,
         evaluate_profile,
         sun_times,
         preview_start,
@@ -283,6 +286,89 @@ async def groups_save(hass, connection, msg, coordinator) -> None:
 async def groups_delete(hass, connection, msg, coordinator) -> None:
     await coordinator.store.async_delete_group(msg["group_id"])
     connection.send_result(msg["id"], {})
+
+
+# ------------------------------------------------------------------------ looks
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required("type"): "lightcurve/looks/list"})
+@websocket_api.async_response
+@_with_coordinator
+async def looks_list(hass, connection, msg, coordinator) -> None:
+    """Looks, with enough detail for the panel to render a button that explains
+    itself: what it will do, and where."""
+    names = {group_id: group.name for group_id, group in coordinator.groups.items()}
+    out = []
+    for look in coordinator.store.looks.values():
+        covered = look.groups or list(names)
+        out.append(
+            {
+                **look.to_dict(),
+                "covers": [names.get(g, g) for g in covered],
+                # A look is "active" when every group it covers is overridden. That
+                # is not proof this particular look is showing, but it is the honest
+                # signal available: the curve is not in charge of those lights.
+                "holding": bool(covered)
+                and all(
+                    coordinator.runtime(g).overridden for g in covered if g in names
+                ),
+            }
+        )
+    connection.send_result(msg["id"], {"looks": out})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {vol.Required("type"): "lightcurve/looks/apply", vol.Required("look_id"): str}
+)
+@websocket_api.async_response
+@_with_coordinator
+async def looks_apply(hass, connection, msg, coordinator) -> None:
+    try:
+        look = coordinator.store.look(msg["look_id"])
+    except StoreError as err:
+        connection.send_error(msg["id"], "not_found", str(err))
+        return
+    applied = await coordinator.async_apply_look(look)
+    if not applied:
+        # Reporting success here would leave the user tapping a button that does
+        # nothing, with no clue why.
+        connection.send_error(
+            msg["id"],
+            "not_applied",
+            f"{look.name} reached no lights. Check the rooms it covers are"
+            " available"
+            + (
+                f" and that their bulbs offer the {look.effect!r} effect"
+                if look.effect
+                else ""
+            ),
+        )
+        return
+    connection.send_result(msg["id"], {"applied": applied})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "lightcurve/looks/release",
+        vol.Optional("group_id"): str,
+    }
+)
+@websocket_api.async_response
+@_with_coordinator
+async def looks_release(hass, connection, msg, coordinator) -> None:
+    """Hand the lights back to the curve without switching them off and on."""
+    group_id = msg.get("group_id")
+    targets = (
+        [coordinator.store.group(group_id)]
+        if group_id
+        else list(coordinator.groups.values())
+    )
+    for group in targets:
+        await coordinator.async_resume(group)
+    connection.send_result(msg["id"], {"released": [g.id for g in targets]})
 
 
 # -------------------------------------------------------------- graph and sun

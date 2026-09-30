@@ -15,6 +15,7 @@ import { morphToward, radiusForWidth } from "./morph";
 import type {
   Group,
   Keyframe,
+  Look,
   Profile,
   ProfileSummary,
   ResolvedKeyframe,
@@ -39,6 +40,7 @@ export class LightcurvePanel extends LitElement {
 
   @state() private profiles: ProfileSummary[] = [];
   @state() private groups: Group[] = [];
+  @state() private looks: Look[] = [];
   @state() private profile: Profile | null = null;
   @state() private variant = "default";
   @state() private samples: Sample[] = [];
@@ -145,6 +147,51 @@ export class LightcurvePanel extends LitElement {
       align-items: flex-end;
     }
     .hint { color: var(--secondary-text-color, #777); font-size: 13px; }
+    .looks-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0 0 12px;
+    }
+    .looks-head h2 {
+      margin: 0;
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--secondary-text-color, #666);
+    }
+    button.small { padding: 6px 12px; min-height: 36px; font-size: 13px; }
+    .looks {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    button.look {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      padding: 12px 14px;
+      min-height: 64px;
+      text-align: left;
+      background: var(--secondary-background-color, #eee);
+      color: var(--primary-text-color, #222);
+      border: 2px solid transparent;
+    }
+    button.look.holding {
+      border-color: var(--primary-color, #03a9f4);
+      background: color-mix(in srgb, var(--primary-color, #03a9f4) 14%, transparent);
+    }
+    .look-name { font-weight: 600; }
+    .look-detail { font-size: 12px; opacity: 0.8; }
+    .look-covers {
+      font-size: 11px;
+      opacity: 0.6;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
+    }
     .error-banner {
       background: var(--error-color, #d32f2f);
       color: #fff;
@@ -182,14 +229,16 @@ export class LightcurvePanel extends LitElement {
     this.busy = true;
     this.error = null;
     try {
-      const [profiles, groups, sun] = await Promise.all([
+      const [profiles, groups, sun, looks] = await Promise.all([
         this.send<{ profiles: ProfileSummary[] }>({ type: "lightcurve/profiles/list" }),
         this.send<{ groups: Group[] }>({ type: "lightcurve/groups/list" }),
         this.send<{ events: SunEvents }>({ type: "lightcurve/sun" }),
+        this.send<{ looks: Look[] }>({ type: "lightcurve/looks/list" }),
       ]);
       this.profiles = profiles.profiles;
       this.groups = groups.groups;
       this.sun = sun.events;
+      this.looks = looks.looks;
       this.previewGroupId ??= this.groups[0]?.id ?? null;
       if (this.profiles.length > 0) {
         await this.openProfile(this.profiles[0].id);
@@ -388,6 +437,37 @@ export class LightcurvePanel extends LitElement {
     }
   }
 
+  private async refreshLooks(): Promise<void> {
+    try {
+      const reply = await this.send<{ looks: Look[] }>({ type: "lightcurve/looks/list" });
+      this.looks = reply.looks;
+    } catch (err) {
+      this.error = describeError(err);
+    }
+  }
+
+  private async applyLook(look: Look): Promise<void> {
+    this.error = null;
+    try {
+      await this.send({ type: "lightcurve/looks/apply", look_id: look.id });
+    } catch (err) {
+      // A look can legitimately reach nothing — an effect the bulbs lack, or a room
+      // that is unavailable. Saying so beats a button that appears to do nothing.
+      this.error = describeError(err);
+    }
+    await this.refreshLooks();
+  }
+
+  private async releaseLooks(): Promise<void> {
+    this.error = null;
+    try {
+      await this.send({ type: "lightcurve/looks/release" });
+    } catch (err) {
+      this.error = describeError(err);
+    }
+    await this.refreshLooks();
+  }
+
   private async save(): Promise<void> {
     if (!this.profile || this.blocked) return;
     this.busy = true;
@@ -510,6 +590,8 @@ export class LightcurvePanel extends LitElement {
         </p>
       </div>
 
+      ${this.renderLooks()}
+
       ${this.issues.length > 0
         ? html`<div class="card">
             <ul class="issues">
@@ -521,6 +603,60 @@ export class LightcurvePanel extends LitElement {
         : nothing}
 
       ${this.selected ? this.renderSheet(this.selected) : nothing}
+    `;
+  }
+
+  /** Buttons for the saved looks.
+   *
+   *  Home Assistant reserves "Themes" for frontend appearance, so these are called
+   *  looks here to avoid two unrelated things sharing a word in the same UI.
+   */
+  private renderLooks(): TemplateResult {
+    if (this.looks.length === 0) return html`${nothing}`;
+    const anyHolding = this.looks.some((look) => look.holding);
+    return html`
+      <div class="card">
+        <div class="looks-head">
+          <h2>Looks</h2>
+          <button
+            class="secondary small"
+            ?disabled=${!anyHolding}
+            title=${anyHolding
+              ? "Return every room to its curve"
+              : "Nothing is holding a look"}
+            @click=${() => void this.releaseLooks()}
+          >
+            Back to curve
+          </button>
+        </div>
+        <div class="looks">
+          ${this.looks.map(
+            (look) => html`
+              <button
+                class="look ${look.holding ? "holding" : ""}"
+                @click=${() => void this.applyLook(look)}
+                title=${look.covers.join(", ")}
+              >
+                <span class="look-name">${look.name}</span>
+                <span class="look-detail">
+                  ${look.mode === "effect"
+                    ? look.effect
+                    : `${look.brightness}%${
+                        look.colour?.mode === "kelvin"
+                          ? ` · ${look.colour.kelvin}K`
+                          : ""
+                      }`}
+                </span>
+                <span class="look-covers">${look.covers.join(", ")}</span>
+              </button>
+            `
+          )}
+        </div>
+        <p class="hint">
+          A look holds its values against the curve. Switch the room off and on, or
+          press Back to curve, to release it.
+        </p>
+      </div>
     `;
   }
 
