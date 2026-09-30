@@ -16,9 +16,28 @@ async def test_setup_creates_one_entity_per_platform(hass, integration):
     registry = er.async_get(hass)
     ours = [e for e in registry.entities.values() if e.platform == DOMAIN]
     domains = {entry.domain for entry in ours}
-    assert domains == {"light", "switch", "sensor", "select", "binary_sensor"}, (
-        f"expected one entity per platform, got {sorted(domains)}"
-    )
+    assert domains == {
+        "light",
+        "switch",
+        "sensor",
+        "select",
+        "binary_sensor",
+        "scene",
+    }, f"expected one entity per platform, got {sorted(domains)}"
+
+
+async def test_the_looks_appear_as_scenes(hass, integration):
+    """Scenes are how Siri reaches a look: HomeKit Bridge exposes scene entities,
+    so "Hey Siri, Movie" needs no HomeKit-specific code."""
+    registry = er.async_get(hass)
+    scenes = {
+        entry.entity_id
+        for entry in registry.entities.values()
+        if entry.platform == DOMAIN and entry.domain == "scene"
+    }
+    assert len(scenes) == 3, f"expected Mood, Movie and Disco, got {sorted(scenes)}"
+    names = {hass.states.get(e).attributes.get("friendly_name") for e in scenes}
+    assert names == {"Mood", "Movie", "Disco"}
 
 
 async def test_setup_registers_the_services(hass, integration):

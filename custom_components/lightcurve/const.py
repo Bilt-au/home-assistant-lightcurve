@@ -10,7 +10,14 @@ from __future__ import annotations
 from typing import Final
 
 DOMAIN: Final = "lightcurve"
-PLATFORMS: Final = ["light", "switch", "sensor", "select", "binary_sensor"]
+PLATFORMS: Final = [
+    "light",
+    "switch",
+    "sensor",
+    "select",
+    "binary_sensor",
+    "scene",
+]
 
 STORAGE_KEY: Final = DOMAIN
 STORAGE_VERSION: Final = 1
@@ -156,5 +163,51 @@ DEFAULT_PROFILE: Final[dict[str, object]] = {
                 },
             ]
         }
+    },
+}
+
+
+# --- looks ---------------------------------------------------------------------
+#
+# A "look" is a named set of values held against the curve: Mood, Movie, Disco.
+# Applying one sets both channel overrides, which is what makes it stick — without
+# that the scheduler would put the curve back within a tick. Turning the room off
+# and on clears the overrides and returns it to the curve, so a look never needs an
+# explicit exit.
+LOOK_MODE_STATIC: Final = "static"
+LOOK_MODE_EFFECT: Final = "effect"
+
+#: Effects run on the bulb itself. The L630 offers Off, Party and Relax, and a
+#: native effect animates at the firmware's own rate with no command traffic from
+#: us — which is the only way anything resembling disco works over Wi-Fi at ~640 ms
+#: per command.
+DEFAULT_LOOKS: Final[dict[str, dict[str, object]]] = {
+    "l_mood": {
+        "id": "l_mood",
+        "name": "Mood",
+        "mode": LOOK_MODE_STATIC,
+        "colour": {"mode": "kelvin", "kelvin": 2200},
+        "brightness": 25,
+        "groups": [],
+        "hold_minutes": None,
+    },
+    "l_movie": {
+        "id": "l_movie",
+        "name": "Movie",
+        "mode": LOOK_MODE_STATIC,
+        "colour": {"mode": "kelvin", "kelvin": 2200},
+        "brightness": 5,
+        "groups": [],
+        "hold_minutes": None,
+    },
+    "l_disco": {
+        "id": "l_disco",
+        "name": "Disco",
+        "mode": LOOK_MODE_EFFECT,
+        "effect": "Party",
+        "colour": None,
+        "brightness": None,
+        "groups": [],
+        "hold_minutes": None,
     },
 }

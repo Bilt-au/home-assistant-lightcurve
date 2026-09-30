@@ -78,6 +78,24 @@ collide in June, or a sun keyframe drift inside the red night section and stop t
 colour holding. Errors block saving; warnings do not, since a warning about June
 should not stop you saving in September.
 
+## Looks, and Siri
+
+Three scenes ship by default — **Mood**, **Movie** and **Disco** — each named exactly
+that, so `Hey Siri, Movie` works once Home Assistant's HomeKit Bridge exposes them.
+They deliberately have no device, because Home Assistant prepends a device name to
+the friendly name and "Lightcurve looks Movie" is not something anyone says.
+
+A look sets its values **and holds both channels**, so the curve does not put itself
+back a minute later. Switching the room off and on releases it — a look needs no
+explicit exit. Optionally it can release itself after a set number of minutes.
+
+**Disco runs on the bulb.** The L630 offers native `Party` and `Relax` effects, and a
+native effect animates at the firmware's own rate with no command traffic from Home
+Assistant. That matters: at ~640 ms per command, a loop driven from Home Assistant
+manages roughly one colour change a second, which is a slow fade rather than a disco.
+Effect names differ between bulbs, so a look whose effect none of the members offer
+reports doing nothing rather than sending a command they will reject.
+
 ## Services
 
 | Service | What it does |

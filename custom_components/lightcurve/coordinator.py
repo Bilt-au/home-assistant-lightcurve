@@ -31,6 +31,8 @@ from homeassistant.components.light import (
     ATTR_BRIGHTNESS_PCT,
     ATTR_COLOR_MODE,
     ATTR_COLOR_TEMP_KELVIN,
+    ATTR_EFFECT,
+    ATTR_EFFECT_LIST,
     ATTR_HS_COLOR,
     ATTR_MAX_COLOR_TEMP_KELVIN,
     ATTR_MIN_COLOR_TEMP_KELVIN,
@@ -57,6 +59,7 @@ from .const import (
     CHANNEL_BRIGHTNESS,
     CHANNEL_COLOUR,
     DOMAIN,
+    LOOK_MODE_EFFECT,
     POWER_RESTORE_APPLY_CURVE,
     POWER_RESTORE_RESTORE_PREVIOUS,
     POWER_RESTORE_TURN_OFF,
@@ -70,7 +73,7 @@ from .engine import (
     kelvin_to_mired,
     resolve_window,
 )
-from .store import Group, LightcurveStore, StoreError
+from .store import Group, LightcurveStore, Look, StoreError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -129,6 +132,8 @@ class GroupRuntime:
 
 class LightcurveCoordinator:
     """Owns the tick, the member commands and all runtime state."""
+
+    logger = _LOGGER
 
     def __init__(self, hass: HomeAssistant, store: LightcurveStore) -> None:
         self.hass = hass
@@ -301,6 +306,78 @@ class LightcurveCoordinator:
         target = evaluate(resolved, moment)
         low, high = self.kelvin_range(group)
         return clamp_target(target, low, high) if low and high else target
+
+    # --- looks -----------------------------------------------------------------
+
+    async def async_apply_look(self, look: Look) -> list[str]:
+        """Put every group a look covers into that look.
+
+        Applying sets both channel overrides, which is the whole mechanism: without
+        them the next tick would put the curve straight back. Switching the room off
+        and on clears the overrides, so a look needs no explicit exit.
+
+        Returns the groups it reached, so a scene can report doing nothing rather
+        than silently succeeding.
+        """
+        applied: list[str] = []
+        targets = look.groups or list(self.groups)
+        for group_id in targets:
+            try:
+                group = self.store.group(group_id)
+            except StoreError:
+                _LOGGER.warning("look %s references missing group %s", look.id, group_id)
+                continue
+
+            members = self.available_members(group)
+            if look.mode == LOOK_MODE_EFFECT:
+                members = [m for m in members if self._supports_effect(m, look.effect)]
+                if not members:
+                    self._warn_once(
+                        group,
+                        f"no member supports the {look.effect!r} effect,"
+                        f" so the {look.name!r} look does nothing here",
+                        None,
+                    )
+                    continue
+                data: dict[str, Any] = {ATTR_EFFECT: look.effect}
+            else:
+                data = {ATTR_BRIGHTNESS_PCT: look.brightness}
+                colour = look.colour or {}
+                if colour.get("mode") == "kelvin":
+                    data[ATTR_COLOR_TEMP_KELVIN] = colour.get("kelvin")
+                elif colour.get("hs"):
+                    data[ATTR_HS_COLOR] = list(colour["hs"])
+
+            if not members:
+                continue
+            await self._async_send_raw(group, members, data)
+
+            runtime = self.runtime(group.id)
+            runtime.override_colour = True
+            runtime.override_brightness = True
+            runtime.override_until = (
+                dt_util.utcnow() + timedelta(minutes=look.hold_minutes)
+                if look.hold_minutes
+                else None
+            )
+            applied.append(group.id)
+
+        self._notify()
+        return applied
+
+    def _supports_effect(self, entity_id: str, effect: str | None) -> bool:
+        """Effect names are device-specific, so check rather than assume.
+
+        A bulb without the named effect would otherwise be sent a command it
+        rejects, and the whole look would look broken because of one member.
+        """
+        if not effect:
+            return False
+        state = self.hass.states.get(entity_id)
+        if state is None:
+            return False
+        available = state.attributes.get(ATTR_EFFECT_LIST) or []
+        return effect in available
 
     # --- preview ---------------------------------------------------------------
 

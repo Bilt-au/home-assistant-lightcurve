@@ -15,8 +15,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
 from .const import (
+    DEFAULT_LOOKS,
     DEFAULT_PROFILE,
     DEFAULT_PROFILE_ID,
+    LOOK_MODE_EFFECT,
+    LOOK_MODE_STATIC,
     POWER_RESTORE_APPLY_CURVE,
     POWER_RESTORE_MODES,
     SETTINGS_DEFAULTS,
@@ -98,6 +101,67 @@ class Group:
             raise StoreError(f"group is missing {err}") from err
 
 
+@dataclass
+class Look:
+    """A named set of values held against the curve.
+
+    Either static — a colour and brightness — or an effect name the bulb runs
+    itself. `groups` is which groups it covers, so one scene entity can put a whole
+    selection of rooms into Movie with a single request.
+    """
+
+    id: str
+    name: str
+    mode: str = LOOK_MODE_STATIC
+    colour: dict[str, Any] | None = None
+    brightness: int | None = None
+    effect: str | None = None
+    groups: list[str] = field(default_factory=list)
+    #: None means hold until the room is switched off and on again.
+    hold_minutes: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.mode not in (LOOK_MODE_STATIC, LOOK_MODE_EFFECT):
+            raise StoreError(f"look {self.id} has unknown mode {self.mode!r}")
+        if self.mode == LOOK_MODE_EFFECT and not self.effect:
+            raise StoreError(f"look {self.id} is an effect look with no effect name")
+        if self.mode == LOOK_MODE_STATIC:
+            if self.brightness is None or not 1 <= self.brightness <= 100:
+                raise StoreError(
+                    f"look {self.id} needs a brightness between 1 and 100"
+                )
+            if not self.colour:
+                raise StoreError(f"look {self.id} needs a colour")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "mode": self.mode,
+            "colour": self.colour,
+            "brightness": self.brightness,
+            "effect": self.effect,
+            "groups": list(self.groups),
+            "hold_minutes": self.hold_minutes,
+        }
+
+    @classmethod
+    def from_dict(cls, raw: dict[str, Any]) -> Look:
+        try:
+            return cls(
+                id=raw["id"],
+                name=raw["name"],
+                mode=raw.get("mode", LOOK_MODE_STATIC),
+                colour=raw.get("colour"),
+                brightness=raw.get("brightness"),
+                effect=raw.get("effect"),
+                groups=list(raw.get("groups") or []),
+                hold_minutes=raw.get("hold_minutes"),
+            )
+        except KeyError as err:
+            raise StoreError(f"look is missing {err}") from err
+
+
 def keyframe_from_dict(raw: dict[str, Any]) -> Keyframe:
     """Convert one stored keyframe into the engine's form.
 
@@ -156,6 +220,11 @@ class LightcurveStore:
             settings.setdefault(key, value)
         self._data.setdefault("profiles", {})
         self._data.setdefault("groups", {})
+        # Looks arrived after the first release, so an existing store has none.
+        # Seeding here rather than in a migration keeps them appearing for anyone
+        # who installed before they existed.
+        if "looks" not in self._data:
+            self._data["looks"] = {k: dict(v) for k, v in DEFAULT_LOOKS.items()}
         self._loaded = True
 
     async def async_save(self) -> None:
@@ -168,6 +237,7 @@ class LightcurveStore:
             "settings": dict(SETTINGS_DEFAULTS),
             "profiles": {DEFAULT_PROFILE_ID: DEFAULT_PROFILE},
             "groups": {},
+            "looks": {k: dict(v) for k, v in DEFAULT_LOOKS.items()},
         }
 
     def _migrate(self, raw: dict[str, Any]) -> dict[str, Any]:
@@ -281,6 +351,37 @@ class LightcurveStore:
 
     async def async_delete_group(self, group_id: str) -> None:
         self._data["groups"].pop(group_id, None)
+        await self.async_save()
+
+    # --- looks -----------------------------------------------------------------
+
+    @property
+    def looks(self) -> dict[str, Look]:
+        self._require_loaded()
+        out: dict[str, Look] = {}
+        for look_id, raw in (self._data.get("looks") or {}).items():
+            try:
+                out[look_id] = Look.from_dict(raw)
+            except StoreError as err:
+                _LOGGER.error("skipping unreadable look %s: %s", look_id, err)
+        return out
+
+    def look(self, look_id: str) -> Look:
+        try:
+            return self.looks[look_id]
+        except KeyError as err:
+            raise StoreError(f"no such look {look_id!r}") from err
+
+    async def async_put_look(self, look: Look) -> None:
+        known = set(self.groups)
+        unknown = [g for g in look.groups if g not in known]
+        if unknown:
+            raise StoreError(f"look {look.id!r} references unknown groups {unknown}")
+        self._data.setdefault("looks", {})[look.id] = look.to_dict()
+        await self.async_save()
+
+    async def async_delete_look(self, look_id: str) -> None:
+        (self._data.get("looks") or {}).pop(look_id, None)
         await self.async_save()
 
     # --- diagnostics -----------------------------------------------------------
