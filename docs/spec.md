@@ -760,13 +760,35 @@ payload.
 directly. Declaring `sun` in the manifest pulled in that integration's polling
 entities for no benefit.
 
-### E.5 Tests run against an older Home Assistant than production
+### E.5 Testing against the real Home Assistant needs Python 3.14
 
-`pytest-homeassistant-custom-component` pins an exact Home Assistant version, and the
-newest available in this environment targets **2025.4.4** while the target system runs
-**2026.9.4**. The test suite therefore verifies logic, not API currency.
+The suite initially ran against HA **2025.4.4** while the target system runs
+**2026.9.4**, which would have left it verifying logic rather than API currency. The
+cause was not that newer versions are unavailable — it was the interpreter.
 
-The code sticks to long-stable APIs for this reason, but the following are worth
-confirming on the real system rather than trusting the green suite: config and options
-flow behaviour, `DeviceInfo` import path, `async_forward_entry_setups`, and the
-`SelectSelector` schema. A first successful setup exercises all four.
+**HA 2026.9.4 declares `requires_python >=3.14.2`.** On Python 3.13, pip filters every
+2026.x release out of the index and reports "No matching distribution found", which is
+indistinguishable from the version not existing. `pip index versions homeassistant`
+likewise showed 2025.4.4 as the newest. Querying PyPI's JSON API directly was what
+made the real constraint visible.
+
+Resolved by installing Python 3.14 and pinning
+`pytest-homeassistant-custom-component==0.13.367`, which pins
+`homeassistant==2026.9.4` — the exact production version. The development requirement
+is therefore **Python >= 3.14**.
+
+**Result: all 90 tests pass unchanged against 2026.9.4.** Nothing in the integration
+needed adjusting, which retires the list of APIs this section previously said to
+verify by hand — the config flow, the options flow, the `DeviceInfo` import path and
+the `SelectSelector` schema are all exercised by the suite now. A predicted casualty,
+`AddEntitiesCallback` being replaced by `AddConfigEntryEntitiesCallback`, did not
+materialise.
+
+A scan with deprecation warnings enabled found none originating from this
+integration, and `filterwarnings` now promotes Home Assistant deprecation warnings to
+errors. Testing against the exact production version is pointless while its warnings
+are suppressed, and this is what keeps the next API change from passing silently.
+
+Worth remembering as a general trap: a pip "no matching distribution" error for a
+version you can see on PyPI usually means an interpreter constraint, not a missing
+release.

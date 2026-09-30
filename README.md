@@ -112,10 +112,14 @@ Measured, not assumed. Full detail in `docs/spec.md` Appendix C.
 
 ## Development
 
+Requires **Python 3.14 or newer** — Home Assistant 2026.9 declares
+`requires_python >=3.14.2`, and on an older interpreter pip hides every 2026.x release
+and reports it as missing.
+
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt
-pytest          # 90 tests
+python3.14 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt   # pins the exact HA the integration targets
+pytest
 ruff check custom_components/ tests/
 ```
 

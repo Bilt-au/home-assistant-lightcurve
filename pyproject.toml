@@ -6,12 +6,15 @@ asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 norecursedirs = ["spike", ".venv"]
 filterwarnings = [
-    "ignore::DeprecationWarning:homeassistant.*",
+    # Testing against the exact production Home Assistant is pointless if its
+    # deprecation warnings are hidden, so they fail the suite instead.
+    "error::DeprecationWarning:homeassistant.*",
+    "error:.*is deprecated.*:DeprecationWarning",
 ]
 
 [tool.ruff]
 line-length = 90
-target-version = "py313"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]

@@ -1,4 +1,9 @@
-# Pinned to whatever Home Assistant version this harness targets; see docs/spec.md
-# Appendix C for the caveat about testing against an older HA than production runs.
-pytest-homeassistant-custom-component
+# Pinned so the test suite runs against the same Home Assistant the target system
+# does. pytest-homeassistant-custom-component pins an exact HA version, and 0.13.367
+# pins homeassistant==2026.9.4.
+#
+# This requires Python >= 3.14: HA 2026.9.4 declares requires_python >=3.14.2, and
+# pip silently filters out every 2026.x release on an older interpreter, which looks
+# exactly like "that version does not exist".
+pytest-homeassistant-custom-component==0.13.367
 ruff
