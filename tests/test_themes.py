@@ -12,7 +12,7 @@ from custom_components.lightcurve.const import (
     THEME_MODE_STATIC,
 )
 from custom_components.lightcurve.coordinator import LightcurveCoordinator
-from custom_components.lightcurve.store import Group, LightcurveStore, Theme, StoreError
+from custom_components.lightcurve.store import Group, LightcurveStore, StoreError, Theme
 
 MEMBERS = ["light.toilet_1", "light.toilet_2"]
 MORNING_UTC = "2026-09-30 08:00:00"
