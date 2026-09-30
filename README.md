@@ -34,6 +34,16 @@ Setup asks which areas to drive. Each area becomes a group with its own wrapper
 light. Membership is taken from the area, so a bulb you add to that room later joins
 on its own with no reconfiguration.
 
+### Adding rooms later
+
+Lightcurve is a single config entry holding as many groups as you like, so adding a
+room is an edit rather than a second install — there is deliberately only one entry.
+
+**Settings → Devices & Services → Lightcurve → Configure → Rooms**, then tick the
+areas you want. Unticking one removes that group and its entities; the bulbs
+themselves are untouched. Groups built from a hand-picked list of lights rather than
+an area are not shown there and are left alone.
+
 ## What you get, per group
 
 | Entity | What it does |

@@ -21,6 +21,20 @@
   "options": {
     "step": {
       "init": {
+        "title": "Lightcurve",
+        "menu_options": {
+          "rooms": "Rooms",
+          "settings": "Settings"
+        }
+      },
+      "rooms": {
+        "title": "Rooms",
+        "description": "Tick the areas Lightcurve should drive. Each becomes a group with its own light. Unticking one removes that group and its entities; the bulbs themselves are untouched.\n\nGroups with a hand-picked list of lights are not shown here and are left alone: {manual}.",
+        "data": {
+          "areas": "Areas"
+        }
+      },
+      "settings": {
         "title": "Lightcurve settings",
         "description": "These defaults were measured against Tapo L630 bulbs. The thresholds are deliberately small: these bulbs ignore transitions, so smoothness comes from frequent tiny steps, and a large threshold would hold the light still and then jump.",
         "data": {
@@ -33,26 +47,49 @@
           "default_transition_seconds": "Transition time (0 for bulbs that ignore it)"
         }
       }
+    },
+    "abort": {
+      "no_areas_with_lights": "No Home Assistant area contains any lights. Assign your bulbs to areas under Settings > Devices, then try again."
     }
   },
   "entity": {
     "switch": {
-      "enabled": { "name": "Curve enabled" }
+      "enabled": {
+        "name": "Curve enabled"
+      }
     },
     "sensor": {
-      "target": { "name": "Curve target" }
+      "target": {
+        "name": "Curve target"
+      }
     },
     "binary_sensor": {
-      "override": { "name": "Curve overridden" }
+      "override": {
+        "name": "Curve overridden"
+      }
     },
     "select": {
-      "profile": { "name": "Profile" }
+      "profile": {
+        "name": "Profile"
+      }
     }
   },
   "services": {
-    "apply_now": { "name": "Apply now", "description": "Recompute and push the curve immediately." },
-    "resume": { "name": "Resume", "description": "Clear overrides and return to the curve." },
-    "pause": { "name": "Pause", "description": "Hold one or both channels so manual values stick." },
-    "set_profile": { "name": "Set profile", "description": "Point groups at a different profile." }
+    "apply_now": {
+      "name": "Apply now",
+      "description": "Recompute and push the curve immediately."
+    },
+    "resume": {
+      "name": "Resume",
+      "description": "Clear overrides and return to the curve."
+    },
+    "pause": {
+      "name": "Pause",
+      "description": "Hold one or both channels so manual values stick."
+    },
+    "set_profile": {
+      "name": "Set profile",
+      "description": "Point groups at a different profile."
+    }
   }
 }
