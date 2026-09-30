@@ -90,6 +90,28 @@ should not stop you saving in September.
 All of them accept a group, a wrapper light, or an area. With no target at all,
 `apply_now` and `resume` apply to every group.
 
+## Updating
+
+Once installed, updates arrive the same way Home Assistant's own do: HACS watches
+this repository's **GitHub Releases** and creates an update entity, so Lightcurve
+appears under **Settings → Updates** with a one-click update and restart.
+
+Nothing appears there until a release exists — HACS treats a repository without
+releases as "install from the default branch" and never reports a new version.
+
+### Cutting one
+
+```bash
+python scripts/release.py 0.2.0
+git push origin main --follow-tags
+```
+
+That bumps the manifest, commits, and tags. Pushing the tag triggers CI, which
+refuses the release if the tag and the manifest version disagree, or if the committed
+panel bundle is stale relative to its source. Home Assistant reports the manifest
+version and HACS reports the tag, so a mismatch would show two different numbers for
+the same install.
+
 ## Important: only one integration may adapt a bulb
 
 If Adaptive Lighting — or anything similar — is managing the same bulbs, the two will
