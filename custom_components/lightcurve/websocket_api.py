@@ -19,7 +19,7 @@ from homeassistant.util import dt as dt_util
 from .const import DOMAIN
 from .coordinator import SUN_EVENTS, LightcurveCoordinator
 from .engine import CurveError, resolve_window, sample, validate
-from .store import Group, StoreError, keyframe_from_dict
+from .store import Group, StoreError, Theme, keyframe_from_dict
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,9 +36,11 @@ def async_register(hass: HomeAssistant) -> None:
         groups_list,
         groups_save,
         groups_delete,
-        looks_list,
-        looks_apply,
-        looks_release,
+        themes_list,
+        themes_apply,
+        themes_release,
+        themes_save,
+        themes_delete,
         evaluate_profile,
         sun_times,
         preview_start,
@@ -288,62 +290,62 @@ async def groups_delete(hass, connection, msg, coordinator) -> None:
     connection.send_result(msg["id"], {})
 
 
-# ------------------------------------------------------------------------ looks
+# ------------------------------------------------------------------------ themes
 
 
 @websocket_api.require_admin
-@websocket_api.websocket_command({vol.Required("type"): "lightcurve/looks/list"})
+@websocket_api.websocket_command({vol.Required("type"): "lightcurve/themes/list"})
 @websocket_api.async_response
 @_with_coordinator
-async def looks_list(hass, connection, msg, coordinator) -> None:
-    """Looks, with enough detail for the panel to render a button that explains
+async def themes_list(hass, connection, msg, coordinator) -> None:
+    """Themes, with enough detail for the panel to render a button that explains
     itself: what it will do, and where."""
     names = {group_id: group.name for group_id, group in coordinator.groups.items()}
     out = []
-    for look in coordinator.store.looks.values():
-        covered = look.groups or list(names)
+    for theme in coordinator.store.themes.values():
+        covered = theme.groups or list(names)
         out.append(
             {
-                **look.to_dict(),
+                **theme.to_dict(),
                 "covers": [names.get(g, g) for g in covered],
-                # Which look is showing, not merely whether something is. Deriving
-                # this from the override flags lit up every look that covered the
+                # Which theme is showing, not merely whether something is. Deriving
+                # this from the override flags lit up every theme that covered the
                 # room as soon as any one of them was applied.
                 "holding": bool(covered)
                 and all(
-                    coordinator.runtime(g).active_look == look.id
+                    coordinator.runtime(g).active_theme == theme.id
                     for g in covered
                     if g in names
                 ),
             }
         )
-    connection.send_result(msg["id"], {"looks": out})
+    connection.send_result(msg["id"], {"themes": out})
 
 
 @websocket_api.require_admin
 @websocket_api.websocket_command(
-    {vol.Required("type"): "lightcurve/looks/apply", vol.Required("look_id"): str}
+    {vol.Required("type"): "lightcurve/themes/apply", vol.Required("theme_id"): str}
 )
 @websocket_api.async_response
 @_with_coordinator
-async def looks_apply(hass, connection, msg, coordinator) -> None:
+async def themes_apply(hass, connection, msg, coordinator) -> None:
     try:
-        look = coordinator.store.look(msg["look_id"])
+        theme = coordinator.store.theme(msg["theme_id"])
     except StoreError as err:
         connection.send_error(msg["id"], "not_found", str(err))
         return
-    applied = await coordinator.async_apply_look(look)
+    applied = await coordinator.async_apply_theme(theme)
     if not applied:
         # Reporting success here would leave the user tapping a button that does
         # nothing, with no clue why.
         connection.send_error(
             msg["id"],
             "not_applied",
-            f"{look.name} reached no lights. Check the rooms it covers are"
+            f"{theme.name} reached no lights. Check the rooms it covers are"
             " available"
             + (
-                f" and that their bulbs offer the {look.effect!r} effect"
-                if look.effect
+                f" and that their bulbs offer the {theme.effect!r} effect"
+                if theme.effect
                 else ""
             ),
         )
@@ -354,13 +356,13 @@ async def looks_apply(hass, connection, msg, coordinator) -> None:
 @websocket_api.require_admin
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "lightcurve/looks/release",
+        vol.Required("type"): "lightcurve/themes/release",
         vol.Optional("group_id"): str,
     }
 )
 @websocket_api.async_response
 @_with_coordinator
-async def looks_release(hass, connection, msg, coordinator) -> None:
+async def themes_release(hass, connection, msg, coordinator) -> None:
     """Hand the lights back to the curve without switching them off and on."""
     group_id = msg.get("group_id")
     targets = (
@@ -371,6 +373,45 @@ async def looks_release(hass, connection, msg, coordinator) -> None:
     for group in targets:
         await coordinator.async_resume(group)
     connection.send_result(msg["id"], {"released": [g.id for g in targets]})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {vol.Required("type"): "lightcurve/themes/save", vol.Required("theme"): dict}
+)
+@websocket_api.async_response
+@_with_coordinator
+async def themes_save(hass, connection, msg, coordinator) -> None:
+    """Create or replace a theme.
+
+    Validation lives in the Theme model, so a theme that cannot be applied — a
+    static one with no colour, an effect one with no effect name — is refused here
+    rather than failing silently the first time someone presses its button.
+    """
+    try:
+        theme = Theme.from_dict(msg["theme"])
+        await coordinator.store.async_put_theme(theme)
+    except StoreError as err:
+        connection.send_error(msg["id"], "invalid_theme", str(err))
+        return
+    connection.send_result(msg["id"], {"theme": theme.to_dict()})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {vol.Required("type"): "lightcurve/themes/delete", vol.Required("theme_id"): str}
+)
+@websocket_api.async_response
+@_with_coordinator
+async def themes_delete(hass, connection, msg, coordinator) -> None:
+    theme_id = msg["theme_id"]
+    # A theme currently on the lights would otherwise leave them held with nothing
+    # to release them but an off/on cycle.
+    for group_id, runtime in coordinator.runtime_states.items():
+        if runtime.active_theme == theme_id:
+            await coordinator.async_resume(coordinator.store.group(group_id))
+    await coordinator.store.async_delete_theme(theme_id)
+    connection.send_result(msg["id"], {})
 
 
 # -------------------------------------------------------------- graph and sun

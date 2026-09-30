@@ -1,4 +1,4 @@
-"""One scene entity per look.
+"""One scene entity per theme.
 
 Home Assistant's HomeKit Bridge exposes `scene` entities to HomeKit, which is what
 makes "Hey Siri, Movie" work without any HomeKit-specific code here. The entity is
@@ -14,9 +14,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, LOOK_MODE_EFFECT
+from .const import DOMAIN, THEME_MODE_EFFECT
 from .coordinator import LightcurveCoordinator
-from .store import Look
+from .store import Theme
 
 
 async def async_setup_entry(
@@ -24,64 +24,64 @@ async def async_setup_entry(
 ) -> None:
     coordinator: LightcurveCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
-        LightcurveLookScene(coordinator, look)
-        for look in coordinator.store.looks.values()
+        LightcurveThemeScene(coordinator, theme)
+        for theme in coordinator.store.themes.values()
     )
 
 
-class LightcurveLookScene(Scene):
-    """Activating this holds a look against the curve until the room is cycled."""
+class LightcurveThemeScene(Scene):
+    """Activating this holds a theme against the curve until the room is cycled."""
 
     _attr_should_poll = False
     # No device, and no entity-name composition.
     #
     # Home Assistant prepends the device name to an entity's friendly name, so a
-    # scene attached to a device comes out as "Lightcurve looks Movie". Siri matches
+    # scene attached to a device comes out as "Lightcurve themes Movie". Siri matches
     # on the friendly name, so that breaks the one thing these entities exist for.
     # Grouping them under a device in the UI is not worth "Hey Siri, Movie" failing,
     # so they deliberately have none.
     _attr_has_entity_name = False
 
-    def __init__(self, coordinator: LightcurveCoordinator, look: Look) -> None:
+    def __init__(self, coordinator: LightcurveCoordinator, theme: Theme) -> None:
         self.coordinator = coordinator
-        self._look_id = look.id
-        self._attr_unique_id = f"{DOMAIN}_look_{look.id}"
-        self._attr_name = look.name
+        self._theme_id = theme.id
+        self._attr_unique_id = f"{DOMAIN}_look_{theme.id}"
+        self._attr_name = theme.name
 
     @property
-    def look(self) -> Look:
+    def theme(self) -> Theme:
         """Re-read from the store so edits apply without recreating the entity."""
-        return self.coordinator.store.look(self._look_id)
+        return self.coordinator.store.theme(self._theme_id)
 
     @property
     def icon(self) -> str:
         return (
             "mdi:party-popper"
-            if self.look.mode == LOOK_MODE_EFFECT
+            if self.theme.mode == THEME_MODE_EFFECT
             else "mdi:lightbulb-on-outline"
         )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        look = self.look
+        theme = self.theme
         return {
-            "mode": look.mode,
-            "effect": look.effect,
-            "brightness_pct": look.brightness,
-            "groups": look.groups or ["(all groups)"],
-            "hold_minutes": look.hold_minutes,
+            "mode": theme.mode,
+            "effect": theme.effect,
+            "brightness_pct": theme.brightness,
+            "groups": theme.groups or ["(all groups)"],
+            "hold_minutes": theme.hold_minutes,
         }
 
     async def async_activate(self, **kwargs: Any) -> None:
-        applied = await self.coordinator.async_apply_look(self.look)
+        applied = await self.coordinator.async_apply_theme(self.theme)
         if not applied:
-            # Silence here would look like success. A look covering only rooms whose
+            # Silence here would theme like success. A theme covering only rooms whose
             # bulbs are unavailable, or asking for an effect none of them have, has
             # done nothing and should say so.
             self.coordinator.logger.warning(
-                "look %r reached no groups: check its rooms are available%s",
-                self.look.name,
+                "theme %r reached no groups: check its rooms are available%s",
+                self.theme.name,
                 " and that the bulbs offer that effect"
-                if self.look.mode == LOOK_MODE_EFFECT
+                if self.theme.mode == THEME_MODE_EFFECT
                 else "",
             )

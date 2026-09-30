@@ -8,19 +8,23 @@
 import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import "./curve-graph";
+import "./colour-wheel";
 import { applyMorphToKeyframes, type Lane } from "./apply-morph";
-import type { Point } from "./fit";
+import type {
+  Point,
+} from "./fit";
 import { formatMinute, parseMinute } from "./geometry";
 import { morphToward, radiusForWidth } from "./morph";
+import { hsToCss, kelvinToCss } from "./wheel";
 import type {
   Group,
   Keyframe,
-  Look,
   Profile,
   ProfileSummary,
   ResolvedKeyframe,
   Sample,
   SunEvents,
+  Theme,
   ValidationIssue,
 } from "./types";
 
@@ -40,7 +44,8 @@ export class LightcurvePanel extends LitElement {
 
   @state() private profiles: ProfileSummary[] = [];
   @state() private groups: Group[] = [];
-  @state() private looks: Look[] = [];
+  @state() private themes: Theme[] = [];
+  @state() private editingTheme: Theme | null = null;
   @state() private profile: Profile | null = null;
   @state() private variant = "default";
   @state() private samples: Sample[] = [];
@@ -147,13 +152,13 @@ export class LightcurvePanel extends LitElement {
       align-items: flex-end;
     }
     .hint { color: var(--secondary-text-color, #777); font-size: 13px; }
-    .looks-head {
+    .themes-head {
       display: flex;
       align-items: center;
       justify-content: space-between;
       margin: 0 0 12px;
     }
-    .looks-head h2 {
+    .themes-head h2 {
       margin: 0;
       font-size: 15px;
       text-transform: uppercase;
@@ -161,12 +166,12 @@ export class LightcurvePanel extends LitElement {
       color: var(--secondary-text-color, #666);
     }
     button.small { padding: 6px 12px; min-height: 36px; font-size: 13px; }
-    .looks {
+    .themes {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       gap: 10px;
     }
-    button.look {
+    button.theme {
       display: flex;
       flex-direction: column;
       align-items: flex-start;
@@ -178,13 +183,83 @@ export class LightcurvePanel extends LitElement {
       color: var(--primary-text-color, #222);
       border: 2px solid transparent;
     }
-    button.look.holding {
+    button.theme.holding {
       border-color: var(--primary-color, #03a9f4);
       background: color-mix(in srgb, var(--primary-color, #03a9f4) 14%, transparent);
     }
-    .look-name { font-weight: 600; }
-    .look-detail { font-size: 12px; opacity: 0.8; }
-    .look-covers {
+    .theme-name { font-weight: 600; }
+    button.theme { position: relative; padding-left: 34px; }
+    .swatch {
+      position: absolute;
+      left: 12px;
+      top: 14px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+    }
+    .swatch.inline {
+      position: static;
+      display: inline-block;
+      margin-right: 6px;
+      vertical-align: -2px;
+    }
+    .edit {
+      position: absolute;
+      right: 8px;
+      top: 6px;
+      padding: 4px 6px;
+      border-radius: 6px;
+      opacity: 0.55;
+      font-size: 13px;
+    }
+    .edit:hover { opacity: 1; background: rgba(0, 0, 0, 0.08); }
+    .editor {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--divider-color, #e0e0e0);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .editor .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--secondary-text-color, #777);
+      font-weight: 500;
+      padding: 0 8px 8px 0;
+      white-space: nowrap;
+    }
+    td { padding: 4px 8px 4px 0; border-top: 1px solid var(--divider-color, #eee); }
+    tr.selected td { background: color-mix(in srgb, var(--primary-color, #03a9f4) 10%, transparent); }
+    td.muted { color: var(--secondary-text-color, #888); font-variant-numeric: tabular-nums; }
+    input.cell, select.cell {
+      padding: 6px 8px;
+      min-height: 36px;
+      font-size: 13px;
+      max-width: 130px;
+    }
+    input.cell.narrow { max-width: 78px; }
+    .sun-pill {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: var(--secondary-background-color, #eee);
+      white-space: nowrap;
+    }
+    .theme-detail { font-size: 12px; opacity: 0.8; }
+    .theme-covers {
       font-size: 11px;
       opacity: 0.6;
       overflow: hidden;
@@ -229,16 +304,16 @@ export class LightcurvePanel extends LitElement {
     this.busy = true;
     this.error = null;
     try {
-      const [profiles, groups, sun, looks] = await Promise.all([
+      const [profiles, groups, sun, themes] = await Promise.all([
         this.send<{ profiles: ProfileSummary[] }>({ type: "lightcurve/profiles/list" }),
         this.send<{ groups: Group[] }>({ type: "lightcurve/groups/list" }),
         this.send<{ events: SunEvents }>({ type: "lightcurve/sun" }),
-        this.send<{ looks: Look[] }>({ type: "lightcurve/looks/list" }),
+        this.send<{ themes: Theme[] }>({ type: "lightcurve/themes/list" }),
       ]);
       this.profiles = profiles.profiles;
       this.groups = groups.groups;
       this.sun = sun.events;
-      this.looks = looks.looks;
+      this.themes = themes.themes;
       this.previewGroupId ??= this.groups[0]?.id ?? null;
       if (this.profiles.length > 0) {
         await this.openProfile(this.profiles[0].id);
@@ -437,35 +512,85 @@ export class LightcurvePanel extends LitElement {
     }
   }
 
-  private async refreshLooks(): Promise<void> {
+  private async refreshThemes(): Promise<void> {
     try {
-      const reply = await this.send<{ looks: Look[] }>({ type: "lightcurve/looks/list" });
-      this.looks = reply.looks;
+      const reply = await this.send<{ themes: Theme[] }>({ type: "lightcurve/themes/list" });
+      this.themes = reply.themes;
     } catch (err) {
       this.error = describeError(err);
     }
   }
 
-  private async applyLook(look: Look): Promise<void> {
+  private async applyTheme(theme: Theme): Promise<void> {
     this.error = null;
     try {
-      await this.send({ type: "lightcurve/looks/apply", look_id: look.id });
+      await this.send({ type: "lightcurve/themes/apply", theme_id: theme.id });
     } catch (err) {
-      // A look can legitimately reach nothing — an effect the bulbs lack, or a room
+      // A theme can legitimately reach nothing — an effect the bulbs lack, or a room
       // that is unavailable. Saying so beats a button that appears to do nothing.
       this.error = describeError(err);
     }
-    await this.refreshLooks();
+    await this.refreshThemes();
   }
 
-  private async releaseLooks(): Promise<void> {
+  private async releaseThemes(): Promise<void> {
     this.error = null;
     try {
-      await this.send({ type: "lightcurve/looks/release" });
+      await this.send({ type: "lightcurve/themes/release" });
     } catch (err) {
       this.error = describeError(err);
     }
-    await this.refreshLooks();
+    await this.refreshThemes();
+  }
+
+  private editTheme(theme: Theme | null): void {
+    // A working copy: abandoning the editor should change nothing.
+    this.editingTheme = theme
+      ? (JSON.parse(JSON.stringify(theme)) as Theme)
+      : {
+          id: `t_${Math.random().toString(36).slice(2, 8)}`,
+          name: "New theme",
+          mode: "static",
+          colour: { mode: "hs", hs: [30, 80] },
+          brightness: 50,
+          effect: null,
+          groups: [],
+          hold_minutes: null,
+          covers: [],
+          holding: false,
+        };
+  }
+
+  private patchTheme(change: Partial<Theme>): void {
+    if (!this.editingTheme) return;
+    this.editingTheme = { ...this.editingTheme, ...change };
+  }
+
+  private async saveTheme(): Promise<void> {
+    if (!this.editingTheme) return;
+    const { covers: _covers, holding: _holding, ...payload } = this.editingTheme;
+    this.error = null;
+    try {
+      await this.send({ type: "lightcurve/themes/save", theme: payload });
+      this.editingTheme = null;
+      await this.refreshThemes();
+    } catch (err) {
+      this.error = describeError(err);
+    }
+  }
+
+  private async deleteTheme(): Promise<void> {
+    if (!this.editingTheme) return;
+    try {
+      await this.send({
+        type: "lightcurve/themes/delete",
+        theme_id: this.editingTheme.id,
+      });
+      this.editingTheme = null;
+      await this.refreshThemes();
+    } catch (err) {
+      this.error = describeError(err);
+    }
   }
 
   private async save(): Promise<void> {
@@ -590,7 +715,9 @@ export class LightcurvePanel extends LitElement {
         </p>
       </div>
 
-      ${this.renderLooks()}
+      ${this.renderKeyframeTable()}
+
+      ${this.renderThemes()}
 
       ${this.issues.length > 0
         ? html`<div class="card">
@@ -606,57 +733,351 @@ export class LightcurvePanel extends LitElement {
     `;
   }
 
-  /** Buttons for the saved looks.
-   *
-   *  Home Assistant reserves "Themes" for frontend appearance, so these are called
-   *  looks here to avoid two unrelated things sharing a word in the same UI.
-   */
-  private renderLooks(): TemplateResult {
-    if (this.looks.length === 0) return html`${nothing}`;
-    const anyHolding = this.looks.some((look) => look.holding);
+  /** Buttons for the saved themes, and the editor for one of them. */
+  private renderThemes(): TemplateResult {
+    if (this.themes.length === 0) return html`${nothing}`;
+    const anyHolding = this.themes.some((theme) => theme.holding);
     return html`
       <div class="card">
-        <div class="looks-head">
-          <h2>Looks</h2>
+        <div class="themes-head">
+          <h2>Themes</h2>
+          <button class="secondary small" @click=${() => this.editTheme(null)}>
+            New theme
+          </button>
           <button
             class="secondary small"
             ?disabled=${!anyHolding}
             title=${anyHolding
               ? "Return every room to its curve"
-              : "Nothing is holding a look"}
-            @click=${() => void this.releaseLooks()}
+              : "Nothing is holding a theme"}
+            @click=${() => void this.releaseThemes()}
           >
             Back to curve
           </button>
         </div>
-        <div class="looks">
-          ${this.looks.map(
-            (look) => html`
+        <div class="themes">
+          ${this.themes.map(
+            (theme) => html`
               <button
-                class="look ${look.holding ? "holding" : ""}"
-                @click=${() => void this.applyLook(look)}
-                title=${look.covers.join(", ")}
+                class="theme ${theme.holding ? "holding" : ""}"
+                @click=${() => void this.applyTheme(theme)}
+                title=${theme.covers.join(", ")}
               >
-                <span class="look-name">${look.name}</span>
-                <span class="look-detail">
-                  ${look.mode === "effect"
-                    ? look.effect
-                    : `${look.brightness}%${
-                        look.colour?.mode === "kelvin"
-                          ? ` · ${look.colour.kelvin}K`
+                <span
+                  class="swatch"
+                  style="background:${themeSwatch(theme)}"
+                ></span>
+                <span
+                  class="edit"
+                  title="Edit"
+                  @click=${(e: Event) => {
+                    e.stopPropagation();
+                    this.editTheme(theme);
+                  }}
+                >✎</span>
+                <span class="theme-name">${theme.name}</span>
+                <span class="theme-detail">
+                  ${theme.mode === "effect"
+                    ? theme.effect
+                    : `${theme.brightness}%${
+                        theme.colour?.mode === "kelvin"
+                          ? ` · ${theme.colour.kelvin}K`
                           : ""
                       }`}
                 </span>
-                <span class="look-covers">${look.covers.join(", ")}</span>
+                <span class="theme-covers">${theme.covers.join(", ")}</span>
               </button>
             `
           )}
         </div>
         <p class="hint">
-          A look holds its values against the curve. Switch the room off and on, or
+          A theme holds its values against the curve. Switch the room off and on, or
           press Back to curve, to release it.
         </p>
+        ${this.editingTheme ? this.renderThemeEditor(this.editingTheme) : nothing}
       </div>
+    `;
+  }
+
+  private renderThemeEditor(theme: Theme): TemplateResult {
+    const hs = theme.colour?.hs ?? [30, 80];
+    return html`
+      <div class="editor">
+        <div class="row">
+          <div class="grow">
+            <label for="theme-name">Name</label>
+            <input
+              id="theme-name"
+              .value=${theme.name}
+              @change=${(e: Event) =>
+                this.patchTheme({ name: (e.target as HTMLInputElement).value })}
+            />
+          </div>
+          <div>
+            <label for="theme-mode">Type</label>
+            <select
+              id="theme-mode"
+              @change=${(e: Event) => {
+                const mode = (e.target as HTMLSelectElement).value as Theme["mode"];
+                this.patchTheme(
+                  mode === "effect"
+                    ? { mode, effect: theme.effect ?? "", colour: null, brightness: null }
+                    : {
+                        mode,
+                        effect: null,
+                        colour: theme.colour ?? { mode: "hs", hs: [30, 80] },
+                        brightness: theme.brightness ?? 50,
+                      }
+                );
+              }}
+            >
+              <option value="static" ?selected=${theme.mode === "static"}>
+                Colour and brightness
+              </option>
+              <option value="effect" ?selected=${theme.mode === "effect"}>
+                Bulb effect
+              </option>
+            </select>
+          </div>
+        </div>
+
+        ${theme.mode === "effect"
+          ? html`<div class="row">
+              <div class="grow">
+                <label for="theme-effect">Effect name</label>
+                <input
+                  id="theme-effect"
+                  .value=${theme.effect ?? ""}
+                  placeholder="Party"
+                  @change=${(e: Event) =>
+                    this.patchTheme({ effect: (e.target as HTMLInputElement).value })}
+                />
+                <p class="hint">
+                  The bulb runs this itself. It must be one your bulbs offer — check
+                  the light's effect list in Developer Tools.
+                </p>
+              </div>
+            </div>`
+          : html`
+              <lightcurve-colour-wheel
+                .hue=${hs[0]}
+                .saturation=${hs[1]}
+                .brightness=${theme.brightness ?? 50}
+                @colour-change=${(e: CustomEvent) =>
+                  this.patchTheme({
+                    colour: { mode: "hs", hs: [e.detail.hue, e.detail.saturation] },
+                    brightness: e.detail.brightness,
+                  })}
+              ></lightcurve-colour-wheel>
+            `}
+
+        <div class="row">
+          <div class="grow">
+            <label for="theme-groups">Rooms</label>
+            <select
+              id="theme-groups"
+              multiple
+              size=${Math.min(4, Math.max(2, this.groups.length))}
+              @change=${(e: Event) => {
+                const select = e.target as HTMLSelectElement;
+                this.patchTheme({
+                  groups: Array.from(select.selectedOptions).map((o) => o.value),
+                });
+              }}
+            >
+              ${this.groups.map(
+                (group) => html`<option
+                  value=${group.id}
+                  ?selected=${theme.groups.includes(group.id)}
+                >
+                  ${group.name}
+                </option>`
+              )}
+            </select>
+            <p class="hint">Select none to cover every room.</p>
+          </div>
+          <div>
+            <label for="theme-hold">Release after (min)</label>
+            <input
+              id="theme-hold"
+              type="number"
+              min="1"
+              max="1440"
+              .value=${theme.hold_minutes === null ? "" : String(theme.hold_minutes)}
+              placeholder="never"
+              @change=${(e: Event) => {
+                const raw = (e.target as HTMLInputElement).value;
+                this.patchTheme({ hold_minutes: raw === "" ? null : Number(raw) });
+              }}
+            />
+          </div>
+        </div>
+
+        <div class="row">
+          <button @click=${() => void this.saveTheme()}>Save theme</button>
+          <button class="secondary" @click=${() => (this.editingTheme = null)}>
+            Cancel
+          </button>
+          <div class="grow"></div>
+          <button class="secondary" @click=${() => void this.deleteTheme()}>
+            Delete
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  /** Every keyframe as a row, for precise editing the graph cannot offer.
+   *
+   *  Dragging is good for shape and hopeless for "make this exactly 06:30". Both
+   *  views edit the same profile, so a change here redraws the graph and vice versa.
+   */
+  private renderKeyframeTable(): TemplateResult {
+    const byId = new Map(this.resolved.map((r) => [r.id, r]));
+    const rows = [...this.keyframes].sort(
+      (a, b) => (byId.get(a.id)?.minute ?? 0) - (byId.get(b.id)?.minute ?? 0)
+    );
+    return html`
+      <div class="card">
+        <div class="themes-head">
+          <h2>Keyframes</h2>
+          <span class="hint">${rows.length} of 48</span>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th><th>Resolves</th><th>Colour</th>
+                <th>Brightness</th><th>Easing</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map((keyframe) => this.renderKeyframeRow(keyframe, byId))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderKeyframeRow(
+    keyframe: Keyframe,
+    byId: Map<string, ResolvedKeyframe>
+  ): TemplateResult {
+    const resolved = byId.get(keyframe.id);
+    const isSun = keyframe.time.type === "sun";
+    const swatch =
+      keyframe.colour.mode === "kelvin"
+        ? kelvinToCss(keyframe.colour.kelvin ?? 3000)
+        : hsToCss(keyframe.colour.hs?.[0] ?? 0, keyframe.colour.hs?.[1] ?? 100);
+    return html`
+      <tr class=${this.selectedId === keyframe.id ? "selected" : ""}
+          @click=${() => (this.selectedId = keyframe.id)}>
+        <td>
+          ${isSun
+            ? html`<span class="sun-pill" title="Follows the sun, so it moves daily">
+                ${keyframe.time.event}${(keyframe.time.offset_min ?? 0) !== 0
+                  ? ` ${keyframe.time.offset_min! > 0 ? "+" : ""}${keyframe.time.offset_min}m`
+                  : ""}
+              </span>`
+            : html`<input
+                class="cell"
+                .value=${keyframe.time.value ?? "00:00"}
+                @change=${(e: Event) => {
+                  const minute = parseMinute((e.target as HTMLInputElement).value);
+                  if (minute === null) return;
+                  this.mutate(keyframe.id, (k) => {
+                    k.time = { type: "fixed", value: formatMinute(minute) };
+                  });
+                  void this.refreshGraph();
+                }}
+              />`}
+        </td>
+        <td class="muted">
+          ${resolved ? formatMinute(resolved.minute) : "—"}
+        </td>
+        <td>
+          <span class="swatch inline" style="background:${swatch}"></span>
+          ${keyframe.colour.mode === "kelvin"
+            ? html`<input
+                class="cell narrow"
+                type="number"
+                min="1000"
+                max="20000"
+                step="50"
+                .value=${String(keyframe.colour.kelvin ?? 3000)}
+                @change=${(e: Event) => {
+                  this.mutate(keyframe.id, (k) => {
+                    k.colour = {
+                      mode: "kelvin",
+                      kelvin: Number((e.target as HTMLInputElement).value),
+                    };
+                  });
+                  void this.refreshGraph();
+                }}
+              />K`
+            : html`<input
+                class="cell narrow"
+                type="number"
+                min="0"
+                max="360"
+                .value=${String(Math.round(keyframe.colour.hs?.[0] ?? 0))}
+                @change=${(e: Event) => {
+                  const saturation = keyframe.colour.hs?.[1] ?? 100;
+                  this.mutate(keyframe.id, (k) => {
+                    k.colour = {
+                      mode: "hs",
+                      hs: [Number((e.target as HTMLInputElement).value), saturation],
+                    };
+                  });
+                  void this.refreshGraph();
+                }}
+              />°`}
+        </td>
+        <td>
+          <input
+            class="cell narrow"
+            type="number"
+            min="1"
+            max="100"
+            .value=${String(keyframe.brightness)}
+            @change=${(e: Event) => {
+              this.mutate(keyframe.id, (k) => {
+                k.brightness = Number((e.target as HTMLInputElement).value);
+              });
+              void this.refreshGraph();
+            }}
+          />%
+        </td>
+        <td>
+          <select
+            class="cell"
+            @change=${(e: Event) => {
+              this.mutate(keyframe.id, (k) => {
+                k.easing = (e.target as HTMLSelectElement).value as Keyframe["easing"];
+              });
+              void this.refreshGraph();
+            }}
+          >
+            ${["linear", "ease_in_out", "step"].map(
+              (option) => html`<option value=${option} ?selected=${keyframe.easing === option}>
+                ${option}
+              </option>`
+            )}
+          </select>
+        </td>
+        <td>
+          <button
+            class="secondary small"
+            ?disabled=${this.keyframes.length <= 2}
+            @click=${(e: Event) => {
+              e.stopPropagation();
+              this.selectedId = keyframe.id;
+              this.deleteSelected();
+            }}
+          >✕</button>
+        </td>
+      </tr>
     `;
   }
 
@@ -756,6 +1177,18 @@ export class LightcurvePanel extends LitElement {
 }
 
 /** Read one lane's value out of a sample. */
+/** A representative colour for a theme, for its button swatch. */
+function themeSwatch(theme: Theme): string {
+  if (theme.mode === "effect") {
+    return "linear-gradient(135deg, #ff4081, #7c4dff, #00bcd4)";
+  }
+  if (theme.colour?.mode === "kelvin") {
+    return kelvinToCss(theme.colour.kelvin ?? 3000);
+  }
+  const hs = theme.colour?.hs ?? [30, 80];
+  return hsToCss(hs[0], hs[1]);
+}
+
 function laneValue(sample: Sample, lane: Lane): number {
   if (lane === "brightness") return sample.brightness_pct ?? 1;
   if (lane === "warmth") return sample.kelvin ?? 2700;

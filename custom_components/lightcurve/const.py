@@ -2,7 +2,7 @@
 
 Every numeric default here traces back to a Phase 0 measurement; see Appendix C of
 docs/spec.md. Where a value differs from the original spec, the reason is noted,
-because several of them look wrong without it.
+because several of them theme wrong without it.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ PLATFORMS: Final = [
 ]
 
 STORAGE_KEY: Final = DOMAIN
-STORAGE_VERSION: Final = 1
+STORAGE_VERSION: Final = 2
 
 # --- scheduler -----------------------------------------------------------------
 #
@@ -167,43 +167,43 @@ DEFAULT_PROFILE: Final[dict[str, object]] = {
 }
 
 
-# --- looks ---------------------------------------------------------------------
+# --- themes ---------------------------------------------------------------------
 #
-# A "look" is a named set of values held against the curve: Mood, Movie, Disco.
+# A "theme" is a named set of values held against the curve: Mood, Movie, Disco.
 # Applying one sets both channel overrides, which is what makes it stick — without
 # that the scheduler would put the curve back within a tick. Turning the room off
-# and on clears the overrides and returns it to the curve, so a look never needs an
+# and on clears the overrides and returns it to the curve, so a theme never needs an
 # explicit exit.
-LOOK_MODE_STATIC: Final = "static"
-LOOK_MODE_EFFECT: Final = "effect"
+THEME_MODE_STATIC: Final = "static"
+THEME_MODE_EFFECT: Final = "effect"
 
 #: Effects run on the bulb itself. The L630 offers Off, Party and Relax, and a
 #: native effect animates at the firmware's own rate with no command traffic from
 #: us — which is the only way anything resembling disco works over Wi-Fi at ~640 ms
 #: per command.
-DEFAULT_LOOKS: Final[dict[str, dict[str, object]]] = {
-    "l_mood": {
-        "id": "l_mood",
+DEFAULT_THEMES: Final[dict[str, dict[str, object]]] = {
+    "t_mood": {
+        "id": "t_mood",
         "name": "Mood",
-        "mode": LOOK_MODE_STATIC,
+        "mode": THEME_MODE_STATIC,
         "colour": {"mode": "kelvin", "kelvin": 2200},
         "brightness": 25,
         "groups": [],
         "hold_minutes": None,
     },
-    "l_movie": {
-        "id": "l_movie",
+    "t_movie": {
+        "id": "t_movie",
         "name": "Movie",
-        "mode": LOOK_MODE_STATIC,
+        "mode": THEME_MODE_STATIC,
         "colour": {"mode": "kelvin", "kelvin": 2200},
         "brightness": 5,
         "groups": [],
         "hold_minutes": None,
     },
-    "l_disco": {
-        "id": "l_disco",
+    "t_disco": {
+        "id": "t_disco",
         "name": "Disco",
-        "mode": LOOK_MODE_EFFECT,
+        "mode": THEME_MODE_EFFECT,
         "effect": "Party",
         "colour": None,
         "brightness": None,

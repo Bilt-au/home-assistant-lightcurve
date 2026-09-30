@@ -15,16 +15,16 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
 from .const import (
-    DEFAULT_LOOKS,
     DEFAULT_PROFILE,
     DEFAULT_PROFILE_ID,
-    LOOK_MODE_EFFECT,
-    LOOK_MODE_STATIC,
+    DEFAULT_THEMES,
     POWER_RESTORE_APPLY_CURVE,
     POWER_RESTORE_MODES,
     SETTINGS_DEFAULTS,
     STORAGE_KEY,
     STORAGE_VERSION,
+    THEME_MODE_EFFECT,
+    THEME_MODE_STATIC,
 )
 from .engine import Colour, CurveError, Keyframe, KeyframeTime
 
@@ -102,7 +102,7 @@ class Group:
 
 
 @dataclass
-class Look:
+class Theme:
     """A named set of values held against the curve.
 
     Either static — a colour and brightness — or an effect name the bulb runs
@@ -112,7 +112,7 @@ class Look:
 
     id: str
     name: str
-    mode: str = LOOK_MODE_STATIC
+    mode: str = THEME_MODE_STATIC
     colour: dict[str, Any] | None = None
     brightness: int | None = None
     effect: str | None = None
@@ -121,17 +121,17 @@ class Look:
     hold_minutes: int | None = None
 
     def __post_init__(self) -> None:
-        if self.mode not in (LOOK_MODE_STATIC, LOOK_MODE_EFFECT):
-            raise StoreError(f"look {self.id} has unknown mode {self.mode!r}")
-        if self.mode == LOOK_MODE_EFFECT and not self.effect:
-            raise StoreError(f"look {self.id} is an effect look with no effect name")
-        if self.mode == LOOK_MODE_STATIC:
+        if self.mode not in (THEME_MODE_STATIC, THEME_MODE_EFFECT):
+            raise StoreError(f"theme {self.id} has unknown mode {self.mode!r}")
+        if self.mode == THEME_MODE_EFFECT and not self.effect:
+            raise StoreError(f"theme {self.id} is an effect theme with no effect name")
+        if self.mode == THEME_MODE_STATIC:
             if self.brightness is None or not 1 <= self.brightness <= 100:
                 raise StoreError(
-                    f"look {self.id} needs a brightness between 1 and 100"
+                    f"theme {self.id} needs a brightness between 1 and 100"
                 )
             if not self.colour:
-                raise StoreError(f"look {self.id} needs a colour")
+                raise StoreError(f"theme {self.id} needs a colour")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -146,12 +146,12 @@ class Look:
         }
 
     @classmethod
-    def from_dict(cls, raw: dict[str, Any]) -> Look:
+    def from_dict(cls, raw: dict[str, Any]) -> Theme:
         try:
             return cls(
                 id=raw["id"],
                 name=raw["name"],
-                mode=raw.get("mode", LOOK_MODE_STATIC),
+                mode=raw.get("mode", THEME_MODE_STATIC),
                 colour=raw.get("colour"),
                 brightness=raw.get("brightness"),
                 effect=raw.get("effect"),
@@ -159,7 +159,7 @@ class Look:
                 hold_minutes=raw.get("hold_minutes"),
             )
         except KeyError as err:
-            raise StoreError(f"look is missing {err}") from err
+            raise StoreError(f"theme is missing {err}") from err
 
 
 def keyframe_from_dict(raw: dict[str, Any]) -> Keyframe:
@@ -195,11 +195,40 @@ def keyframe_from_dict(raw: dict[str, Any]) -> Keyframe:
         raise StoreError(f"invalid keyframe {raw.get('id', '?')}: {err}") from err
 
 
+class _MigratingStore(Store[dict[str, Any]]):
+    """Home Assistant owns storage migration, so it has to happen here.
+
+    Store.async_load raises NotImplementedError when the stored major version is
+    older than the current one and this hook is not overridden — a hand-rolled
+    migration after load never gets the chance to run.
+    """
+
+    async def _async_migrate_func(
+        self, old_major_version: int, old_minor_version: int, old_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        if old_major_version < 2 and "looks" in old_data:
+            # Themes were called "looks" in 0.2.0 to 0.2.4. Renamed rather than
+            # re-seeded, so anything already saved survives the change.
+            #
+            # Only when looks were actually present: writing an empty "themes" key
+            # here would look like "the user has no themes" rather than "this store
+            # predates themes", and the defaults would never be seeded.
+            renamed: dict[str, Any] = {}
+            for key, theme in (old_data.pop("looks") or {}).items():
+                if isinstance(theme, dict) and str(theme.get("id", "")).startswith("l_"):
+                    theme["id"] = "t_" + theme["id"][2:]
+                renamed[theme.get("id", key) if isinstance(theme, dict) else key] = theme
+            old_data["themes"] = renamed
+        return old_data
+
+
 class LightcurveStore:
     """Thin wrapper over HA's Store with defaults, validation and accessors."""
 
     def __init__(self, hass: HomeAssistant) -> None:
-        self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
+        self._store: Store[dict[str, Any]] = _MigratingStore(
+            hass, STORAGE_VERSION, STORAGE_KEY
+        )
         self._data: dict[str, Any] = {}
         self._loaded = False
 
@@ -220,11 +249,11 @@ class LightcurveStore:
             settings.setdefault(key, value)
         self._data.setdefault("profiles", {})
         self._data.setdefault("groups", {})
-        # Looks arrived after the first release, so an existing store has none.
+        # Themes arrived after the first release, so an existing store has none.
         # Seeding here rather than in a migration keeps them appearing for anyone
         # who installed before they existed.
-        if "looks" not in self._data:
-            self._data["looks"] = {k: dict(v) for k, v in DEFAULT_LOOKS.items()}
+        if "themes" not in self._data:
+            self._data["themes"] = {k: dict(v) for k, v in DEFAULT_THEMES.items()}
         self._loaded = True
 
     async def async_save(self) -> None:
@@ -237,21 +266,18 @@ class LightcurveStore:
             "settings": dict(SETTINGS_DEFAULTS),
             "profiles": {DEFAULT_PROFILE_ID: DEFAULT_PROFILE},
             "groups": {},
-            "looks": {k: dict(v) for k, v in DEFAULT_LOOKS.items()},
+            "themes": {k: dict(v) for k, v in DEFAULT_THEMES.items()},
         }
 
     def _migrate(self, raw: dict[str, Any]) -> dict[str, Any]:
-        """Bring stored data up to STORAGE_VERSION.
-
-        Only version 1 exists, so there is nothing to do yet. The hook is here so
-        the first real migration has an obvious home.
-        """
+        """Bring stored data up to STORAGE_VERSION."""
         version = raw.get("version", STORAGE_VERSION)
         if version > STORAGE_VERSION:
             raise StoreError(
                 f"stored data is version {version}, this build understands"
                 f" {STORAGE_VERSION} — downgrade is not supported"
             )
+
         raw["version"] = STORAGE_VERSION
         return raw
 
@@ -353,35 +379,35 @@ class LightcurveStore:
         self._data["groups"].pop(group_id, None)
         await self.async_save()
 
-    # --- looks -----------------------------------------------------------------
+    # --- themes -----------------------------------------------------------------
 
     @property
-    def looks(self) -> dict[str, Look]:
+    def themes(self) -> dict[str, Theme]:
         self._require_loaded()
-        out: dict[str, Look] = {}
-        for look_id, raw in (self._data.get("looks") or {}).items():
+        out: dict[str, Theme] = {}
+        for theme_id, raw in (self._data.get("themes") or {}).items():
             try:
-                out[look_id] = Look.from_dict(raw)
+                out[theme_id] = Theme.from_dict(raw)
             except StoreError as err:
-                _LOGGER.error("skipping unreadable look %s: %s", look_id, err)
+                _LOGGER.error("skipping unreadable theme %s: %s", theme_id, err)
         return out
 
-    def look(self, look_id: str) -> Look:
+    def theme(self, theme_id: str) -> Theme:
         try:
-            return self.looks[look_id]
+            return self.themes[theme_id]
         except KeyError as err:
-            raise StoreError(f"no such look {look_id!r}") from err
+            raise StoreError(f"no such theme {theme_id!r}") from err
 
-    async def async_put_look(self, look: Look) -> None:
+    async def async_put_theme(self, theme: Theme) -> None:
         known = set(self.groups)
-        unknown = [g for g in look.groups if g not in known]
+        unknown = [g for g in theme.groups if g not in known]
         if unknown:
-            raise StoreError(f"look {look.id!r} references unknown groups {unknown}")
-        self._data.setdefault("looks", {})[look.id] = look.to_dict()
+            raise StoreError(f"theme {theme.id!r} references unknown groups {unknown}")
+        self._data.setdefault("themes", {})[theme.id] = theme.to_dict()
         await self.async_save()
 
-    async def async_delete_look(self, look_id: str) -> None:
-        (self._data.get("looks") or {}).pop(look_id, None)
+    async def async_delete_theme(self, theme_id: str) -> None:
+        (self._data.get("themes") or {}).pop(theme_id, None)
         await self.async_save()
 
     # --- diagnostics -----------------------------------------------------------

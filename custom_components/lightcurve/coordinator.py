@@ -60,10 +60,10 @@ from .const import (
     CHANNEL_BRIGHTNESS,
     CHANNEL_COLOUR,
     DOMAIN,
-    LOOK_MODE_EFFECT,
     POWER_RESTORE_APPLY_CURVE,
     POWER_RESTORE_RESTORE_PREVIOUS,
     POWER_RESTORE_TURN_OFF,
+    THEME_MODE_EFFECT,
 )
 from .engine import (
     CurveError,
@@ -74,7 +74,7 @@ from .engine import (
     kelvin_to_mired,
     resolve_window,
 )
-from .store import Group, LightcurveStore, Look, StoreError
+from .store import Group, LightcurveStore, StoreError, Theme
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -126,10 +126,10 @@ class GroupRuntime:
     suppress_until: dict[str, float] = field(default_factory=dict)
     pre_outage: dict[str, dict[str, Any]] = field(default_factory=dict)
     warned: set[str] = field(default_factory=set)
-    #: Which look is currently showing, if any. Inferring this from the override
-    #: flags does not work: every look covering a room would report itself active
+    #: Which theme is currently showing, if any. Inferring this from the override
+    #: flags does not work: every theme covering a room would report itself active
     #: the moment any one of them was applied.
-    active_look: str | None = None
+    active_theme: str | None = None
     #: Timestamps of recent externally-initiated turn_on calls, for storm detection.
     recent_turn_ons: deque[float] = field(default_factory=lambda: deque(maxlen=64))
     storm_until: float = 0.0
@@ -145,7 +145,7 @@ class GroupRuntime:
         self.override_colour = False
         self.override_brightness = False
         self.override_until = None
-        self.active_look = None
+        self.active_theme = None
 
 
 class LightcurveCoordinator:
@@ -269,6 +269,11 @@ class LightcurveCoordinator:
     def groups(self) -> dict[str, Group]:
         return self.store.groups
 
+    @property
+    def runtime_states(self) -> dict[str, GroupRuntime]:
+        """Every runtime that exists, for callers that need to scan them."""
+        return self._runtime
+
     def runtime(self, group_id: str) -> GroupRuntime:
         return self._runtime.setdefault(group_id, GroupRuntime())
 
@@ -373,42 +378,44 @@ class LightcurveCoordinator:
         low, high = self.kelvin_range(group)
         return clamp_target(target, low, high) if low and high else target
 
-    # --- looks -----------------------------------------------------------------
+    # --- themes -----------------------------------------------------------------
 
-    async def async_apply_look(self, look: Look) -> list[str]:
-        """Put every group a look covers into that look.
+    async def async_apply_theme(self, theme: Theme) -> list[str]:
+        """Put every group a theme covers into that theme.
 
         Applying sets both channel overrides, which is the whole mechanism: without
         them the next tick would put the curve straight back. Switching the room off
-        and on clears the overrides, so a look needs no explicit exit.
+        and on clears the overrides, so a theme needs no explicit exit.
 
         Returns the groups it reached, so a scene can report doing nothing rather
         than silently succeeding.
         """
         applied: list[str] = []
-        targets = look.groups or list(self.groups)
+        targets = theme.groups or list(self.groups)
         for group_id in targets:
             try:
                 group = self.store.group(group_id)
             except StoreError:
-                _LOGGER.warning("look %s references missing group %s", look.id, group_id)
+                _LOGGER.warning(
+                    "theme %s references missing group %s", theme.id, group_id
+                )
                 continue
 
             members = self.available_members(group)
-            if look.mode == LOOK_MODE_EFFECT:
-                members = [m for m in members if self._supports_effect(m, look.effect)]
+            if theme.mode == THEME_MODE_EFFECT:
+                members = [m for m in members if self._supports_effect(m, theme.effect)]
                 if not members:
                     self._warn_once(
                         group,
-                        f"no member supports the {look.effect!r} effect,"
-                        f" so the {look.name!r} look does nothing here",
+                        f"no member supports the {theme.effect!r} effect,"
+                        f" so the {theme.name!r} theme does nothing here",
                         None,
                     )
                     continue
-                data: dict[str, Any] = {ATTR_EFFECT: look.effect}
+                data: dict[str, Any] = {ATTR_EFFECT: theme.effect}
             else:
-                data = {ATTR_BRIGHTNESS_PCT: look.brightness}
-                colour = look.colour or {}
+                data = {ATTR_BRIGHTNESS_PCT: theme.brightness}
+                colour = theme.colour or {}
                 if colour.get("mode") == "kelvin":
                     data[ATTR_COLOR_TEMP_KELVIN] = colour.get("kelvin")
                 elif colour.get("hs"):
@@ -421,10 +428,10 @@ class LightcurveCoordinator:
             runtime = self.runtime(group.id)
             runtime.override_colour = True
             runtime.override_brightness = True
-            runtime.active_look = look.id
+            runtime.active_theme = theme.id
             runtime.override_until = (
-                dt_util.utcnow() + timedelta(minutes=look.hold_minutes)
-                if look.hold_minutes
+                dt_util.utcnow() + timedelta(minutes=theme.hold_minutes)
+                if theme.hold_minutes
                 else None
             )
             applied.append(group.id)
@@ -436,7 +443,7 @@ class LightcurveCoordinator:
         """Effect names are device-specific, so check rather than assume.
 
         A bulb without the named effect would otherwise be sent a command it
-        rejects, and the whole look would look broken because of one member.
+        rejects, and the whole theme would theme broken because of one member.
         """
         if not effect:
             return False
@@ -688,8 +695,8 @@ class LightcurveCoordinator:
             runtime.override_brightness = True
         if ATTR_COLOR_TEMP_KELVIN in kwargs or ATTR_HS_COLOR in kwargs:
             runtime.override_colour = True
-        # Whatever look was showing is not showing any more.
-        runtime.active_look = None
+        # Whatever theme was showing is not showing any more.
+        runtime.active_theme = None
         self._set_override_deadline(group, runtime)
 
         data = dict(kwargs)
@@ -789,7 +796,7 @@ class LightcurveCoordinator:
             runtime.override_colour = True
         if CHANNEL_BRIGHTNESS in channels:
             runtime.override_brightness = True
-        runtime.active_look = None
+        runtime.active_theme = None
         runtime.override_until = (
             dt_util.utcnow() + timedelta(minutes=duration_minutes)
             if duration_minutes
@@ -859,8 +866,8 @@ class LightcurveCoordinator:
             runtime.override_colour = True
         if brightness_changed:
             runtime.override_brightness = True
-        # Someone has changed these lights by hand, so the look is gone.
-        runtime.active_look = None
+        # Someone has changed these lights by hand, so the theme is gone.
+        runtime.active_theme = None
         self._set_override_deadline(group, runtime)
         _LOGGER.debug(
             "%s: foreign change on %s (colour=%s brightness=%s)",
@@ -1011,7 +1018,7 @@ def members_for_area(hass: HomeAssistant, area_id: str) -> list[str]:
     """Light entities in an area, including those inheriting it from their device.
 
     The entity registry only records an area directly when it has been overridden,
-    so a device-level area has to be followed too; otherwise most bulbs look
+    so a device-level area has to be followed too; otherwise most bulbs theme
     area-less.
     """
     from homeassistant.helpers import device_registry as dr

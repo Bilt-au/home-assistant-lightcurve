@@ -80,7 +80,7 @@ export interface Group {
   target: Sample | null;
 }
 
-export interface Look {
+export interface Theme {
   id: string;
   name: string;
   mode: "static" | "effect";

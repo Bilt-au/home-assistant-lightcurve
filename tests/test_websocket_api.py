@@ -226,7 +226,7 @@ async def test_evaluate_returns_samples_and_resolved_keyframes(ws):
     assert result["samples"][0]["minute"] == 0
     assert result["samples"][-1]["minute"] == 1410
     # Every sample carries the colour the engine computed, so the gradient strip is
-    # not the browser's guess at what 2700 K looks like.
+    # not the browser's guess at what 2700 K themes like.
     assert all(s["rgb"] is not None for s in result["samples"])
     assert {k["id"] for k in result["keyframes"]} >= {"k_red_on", "k_noon"}
 
@@ -327,18 +327,18 @@ async def test_commands_require_an_admin(
     assert reply["error"]["code"] == "unauthorized"
 
 
-# ----------------------------------------------------------------------- looks
+# ----------------------------------------------------------------------- themes
 
 
 async def test_looks_list_says_what_each_one_covers(ws):
-    reply = await call(ws, {"type": "lightcurve/looks/list"})
+    reply = await call(ws, {"type": "lightcurve/themes/list"})
     assert reply["success"]
-    looks = {look["name"]: look for look in reply["result"]["looks"]}
-    assert set(looks) == {"Mood", "Movie", "Disco"}
-    # The seeded looks cover no group explicitly, which means all of them.
-    assert looks["Movie"]["covers"] == ["Toilet"]
-    assert looks["Disco"]["effect"] == "Party"
-    assert looks["Movie"]["holding"] is False
+    themes = {theme["name"]: theme for theme in reply["result"]["themes"]}
+    assert set(themes) == {"Mood", "Movie", "Disco"}
+    # The seeded themes cover no group explicitly, which means all of them.
+    assert themes["Movie"]["covers"] == ["Toilet"]
+    assert themes["Disco"]["effect"] == "Party"
+    assert themes["Movie"]["holding"] is False
 
 
 async def test_applying_a_look_reaches_the_lights(hass, ws):
@@ -346,7 +346,7 @@ async def test_applying_a_look_reaches_the_lights(hass, ws):
 
     calls = async_mock_service(hass, "light", "turn_on")
     with freeze_time(MORNING_UTC):
-        reply = await call(ws, {"type": "lightcurve/looks/apply", "look_id": "l_movie"})
+        reply = await call(ws, {"type": "lightcurve/themes/apply", "theme_id": "t_movie"})
     assert reply["success"], reply.get("error")
     assert reply["result"]["applied"] == ["g_toilet"]
     assert calls[0].data["brightness_pct"] == 5
@@ -357,9 +357,9 @@ async def test_an_applied_look_shows_as_holding(hass, ws):
 
     async_mock_service(hass, "light", "turn_on")
     with freeze_time(MORNING_UTC):
-        await call(ws, {"type": "lightcurve/looks/apply", "look_id": "l_mood"})
-        reply = await call(ws, {"type": "lightcurve/looks/list"})
-    holding = {look["name"]: look["holding"] for look in reply["result"]["looks"]}
+        await call(ws, {"type": "lightcurve/themes/apply", "theme_id": "t_mood"})
+        reply = await call(ws, {"type": "lightcurve/themes/list"})
+    holding = {theme["name"]: theme["holding"] for theme in reply["result"]["themes"]}
     assert holding["Mood"] is True
 
 
@@ -368,8 +368,8 @@ async def test_releasing_hands_the_lights_back_to_the_curve(hass, ws):
 
     async_mock_service(hass, "light", "turn_on")
     with freeze_time(MORNING_UTC):
-        await call(ws, {"type": "lightcurve/looks/apply", "look_id": "l_mood"})
-        reply = await call(ws, {"type": "lightcurve/looks/release"})
+        await call(ws, {"type": "lightcurve/themes/apply", "theme_id": "t_mood"})
+        reply = await call(ws, {"type": "lightcurve/themes/release"})
     assert reply["success"]
     coordinator = next(iter(hass.data["lightcurve"].values()))
     assert coordinator.runtime("g_toilet").overridden is False
@@ -382,30 +382,30 @@ async def test_a_look_that_reaches_nothing_reports_an_error(hass, ws):
     async_mock_service(hass, "light", "turn_on")
     # Disco needs the Party effect, which these test bulbs do not advertise.
     with freeze_time(MORNING_UTC):
-        reply = await call(ws, {"type": "lightcurve/looks/apply", "look_id": "l_disco"})
+        reply = await call(ws, {"type": "lightcurve/themes/apply", "theme_id": "t_disco"})
     assert not reply["success"]
     assert reply["error"]["code"] == "not_applied"
     assert "effect" in reply["error"]["message"]
 
 
 async def test_applying_an_unknown_look_errors(ws):
-    reply = await call(ws, {"type": "lightcurve/looks/apply", "look_id": "nope"})
+    reply = await call(ws, {"type": "lightcurve/themes/apply", "theme_id": "nope"})
     assert not reply["success"]
     assert reply["error"]["code"] == "not_found"
 
 
 async def test_only_the_applied_look_shows_as_holding(hass, ws):
-    """The bug this guards: every look covering the room lit up as soon as any one
+    """The bug this guards: every theme covering the room lit up as soon as any one
     of them was applied, because "holding" was derived from the override flags
-    rather than from which look was actually showing."""
+    rather than from which theme was actually showing."""
     from pytest_homeassistant_custom_component.common import async_mock_service
 
     async_mock_service(hass, "light", "turn_on")
     with freeze_time(MORNING_UTC):
-        await call(ws, {"type": "lightcurve/looks/apply", "look_id": "l_movie"})
-        reply = await call(ws, {"type": "lightcurve/looks/list"})
+        await call(ws, {"type": "lightcurve/themes/apply", "theme_id": "t_movie"})
+        reply = await call(ws, {"type": "lightcurve/themes/list"})
 
-    holding = {look["name"]: look["holding"] for look in reply["result"]["looks"]}
+    holding = {theme["name"]: theme["holding"] for theme in reply["result"]["themes"]}
     assert holding == {"Movie": True, "Mood": False, "Disco": False}
 
 
@@ -414,17 +414,17 @@ async def test_switching_look_moves_the_highlight(hass, ws):
 
     async_mock_service(hass, "light", "turn_on")
     with freeze_time(MORNING_UTC):
-        await call(ws, {"type": "lightcurve/looks/apply", "look_id": "l_movie"})
-        await call(ws, {"type": "lightcurve/looks/apply", "look_id": "l_mood"})
-        reply = await call(ws, {"type": "lightcurve/looks/list"})
+        await call(ws, {"type": "lightcurve/themes/apply", "theme_id": "t_movie"})
+        await call(ws, {"type": "lightcurve/themes/apply", "theme_id": "t_mood"})
+        reply = await call(ws, {"type": "lightcurve/themes/list"})
 
-    holding = {look["name"]: look["holding"] for look in reply["result"]["looks"]}
+    holding = {theme["name"]: theme["holding"] for theme in reply["result"]["themes"]}
     assert holding["Mood"] is True
     assert holding["Movie"] is False
 
 
 async def test_a_manual_change_clears_the_highlight(hass, ws):
-    """Once someone dims the room by hand, the look is not what is showing."""
+    """Once someone dims the room by hand, the theme is not what is showing."""
     from pytest_homeassistant_custom_component.common import async_mock_service
 
     async_mock_service(hass, "light", "turn_on")
@@ -432,11 +432,11 @@ async def test_a_manual_change_clears_the_highlight(hass, ws):
     group = coordinator.store.group("g_toilet")
 
     with freeze_time(MORNING_UTC):
-        await call(ws, {"type": "lightcurve/looks/apply", "look_id": "l_mood"})
+        await call(ws, {"type": "lightcurve/themes/apply", "theme_id": "t_mood"})
         await coordinator.async_turn_on(group, brightness_pct=70)
-        reply = await call(ws, {"type": "lightcurve/looks/list"})
+        reply = await call(ws, {"type": "lightcurve/themes/list"})
 
-    assert all(not look["holding"] for look in reply["result"]["looks"])
+    assert all(not theme["holding"] for theme in reply["result"]["themes"])
 
 
 async def test_releasing_clears_the_highlight(hass, ws):
@@ -444,7 +444,78 @@ async def test_releasing_clears_the_highlight(hass, ws):
 
     async_mock_service(hass, "light", "turn_on")
     with freeze_time(MORNING_UTC):
-        await call(ws, {"type": "lightcurve/looks/apply", "look_id": "l_mood"})
-        await call(ws, {"type": "lightcurve/looks/release"})
-        reply = await call(ws, {"type": "lightcurve/looks/list"})
-    assert all(not look["holding"] for look in reply["result"]["looks"])
+        await call(ws, {"type": "lightcurve/themes/apply", "theme_id": "t_mood"})
+        await call(ws, {"type": "lightcurve/themes/release"})
+        reply = await call(ws, {"type": "lightcurve/themes/list"})
+    assert all(not theme["holding"] for theme in reply["result"]["themes"])
+
+
+async def test_a_custom_theme_can_be_saved_and_applied(hass, ws):
+    from pytest_homeassistant_custom_component.common import async_mock_service
+
+    reply = await call(
+        ws,
+        {
+            "type": "lightcurve/themes/save",
+            "theme": {
+                "id": "t_reading",
+                "name": "Reading",
+                "mode": "static",
+                "colour": {"mode": "hs", "hs": [40, 30]},
+                "brightness": 80,
+                "groups": ["g_toilet"],
+                "hold_minutes": None,
+            },
+        },
+    )
+    assert reply["success"], reply.get("error")
+
+    calls = async_mock_service(hass, "light", "turn_on")
+    with freeze_time(MORNING_UTC):
+        applied = await call(
+            ws, {"type": "lightcurve/themes/apply", "theme_id": "t_reading"}
+        )
+    assert applied["success"]
+    assert calls[0].data["hs_color"] == [40, 30]
+    assert calls[0].data["brightness_pct"] == 80
+
+
+async def test_an_unusable_theme_is_refused_at_save_time(ws):
+    """Better to refuse it here than to let someone press a button that can never
+    work."""
+    reply = await call(
+        ws,
+        {
+            "type": "lightcurve/themes/save",
+            "theme": {
+                "id": "t_broken",
+                "name": "Broken",
+                "mode": "static",
+                "colour": None,
+                "brightness": 50,
+                "groups": [],
+            },
+        },
+    )
+    assert not reply["success"]
+    assert reply["error"]["code"] == "invalid_theme"
+
+
+async def test_deleting_a_theme_releases_the_lights_it_was_holding(hass, ws):
+    """Otherwise the room stays held with nothing left to release it but an
+    off/on cycle."""
+    from pytest_homeassistant_custom_component.common import async_mock_service
+
+    async_mock_service(hass, "light", "turn_on")
+    coordinator = next(iter(hass.data["lightcurve"].values()))
+    with freeze_time(MORNING_UTC):
+        await call(ws, {"type": "lightcurve/themes/apply", "theme_id": "t_mood"})
+        assert coordinator.runtime("g_toilet").active_theme == "t_mood"
+        reply = await call(
+            ws, {"type": "lightcurve/themes/delete", "theme_id": "t_mood"}
+        )
+    assert reply["success"]
+    assert coordinator.runtime("g_toilet").overridden is False
+
+    listed = await call(ws, {"type": "lightcurve/themes/list"})
+    assert "Mood" not in {t["name"] for t in listed["result"]["themes"]}

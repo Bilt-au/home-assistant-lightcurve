@@ -152,3 +152,66 @@ async def test_group_round_trips_through_storage(hass):
     await reopened.async_load()
     restored = reopened.group("g_toilet")
     assert restored == original
+
+
+# --------------------------------------------------------------- v1 -> v2
+
+
+async def test_looks_saved_before_the_rename_become_themes(hass, hass_storage):
+    """0.2.0 to 0.2.4 called these "looks". A user's own entries have to survive the
+    rename, not be replaced by the defaults."""
+    from custom_components.lightcurve.const import DEFAULT_PROFILE, STORAGE_KEY
+
+    hass_storage[STORAGE_KEY] = {
+        "version": 1,
+        "key": STORAGE_KEY,
+        "data": {
+            "version": 1,
+            "settings": dict(SETTINGS_DEFAULTS),
+            "profiles": {DEFAULT_PROFILE_ID: DEFAULT_PROFILE},
+            "groups": {},
+            "looks": {
+                "l_mine": {
+                    "id": "l_mine",
+                    "name": "My own",
+                    "mode": "static",
+                    "colour": {"mode": "hs", "hs": [280, 90]},
+                    "brightness": 42,
+                    "effect": None,
+                    "groups": [],
+                    "hold_minutes": 30,
+                }
+            },
+        },
+    }
+    store = LightcurveStore(hass)
+    await store.async_load()
+
+    themes = store.themes
+    assert "t_mine" in themes, "the id prefix should follow the rename"
+    mine = themes["t_mine"]
+    assert mine.name == "My own"
+    assert mine.brightness == 42
+    assert mine.colour == {"mode": "hs", "hs": [280, 90]}
+    assert mine.hold_minutes == 30
+    assert "l_mine" not in themes
+
+
+async def test_a_store_predating_themes_gets_the_defaults(hass, hass_storage):
+    """No looks at all means this store is older than the feature, not that the user
+    deleted everything."""
+    from custom_components.lightcurve.const import DEFAULT_PROFILE, STORAGE_KEY
+
+    hass_storage[STORAGE_KEY] = {
+        "version": 1,
+        "key": STORAGE_KEY,
+        "data": {
+            "version": 1,
+            "settings": dict(SETTINGS_DEFAULTS),
+            "profiles": {DEFAULT_PROFILE_ID: DEFAULT_PROFILE},
+            "groups": {},
+        },
+    }
+    store = LightcurveStore(hass)
+    await store.async_load()
+    assert {t.name for t in store.themes.values()} == {"Mood", "Movie", "Disco"}

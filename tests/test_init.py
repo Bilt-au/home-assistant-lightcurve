@@ -27,7 +27,7 @@ async def test_setup_creates_one_entity_per_platform(hass, integration):
 
 
 async def test_the_looks_appear_as_scenes(hass, integration):
-    """Scenes are how Siri reaches a look: HomeKit Bridge exposes scene entities,
+    """Scenes are how Siri reaches a theme: HomeKit Bridge exposes scene entities,
     so "Hey Siri, Movie" needs no HomeKit-specific code."""
     registry = er.async_get(hass)
     scenes = {

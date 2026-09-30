@@ -1,4 +1,4 @@
-"""Looks: named settings held against the curve, reachable from HomeKit as scenes."""
+"""Themes: named settings held against the curve, reachable from HomeKit as scenes."""
 
 from __future__ import annotations
 
@@ -8,11 +8,11 @@ from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.lightcurve.const import (
     DEFAULT_PROFILE_ID,
-    LOOK_MODE_EFFECT,
-    LOOK_MODE_STATIC,
+    THEME_MODE_EFFECT,
+    THEME_MODE_STATIC,
 )
 from custom_components.lightcurve.coordinator import LightcurveCoordinator
-from custom_components.lightcurve.store import Group, LightcurveStore, Look, StoreError
+from custom_components.lightcurve.store import Group, LightcurveStore, Theme, StoreError
 
 MEMBERS = ["light.toilet_1", "light.toilet_2"]
 MORNING_UTC = "2026-09-30 08:00:00"
@@ -42,32 +42,32 @@ async def build(hass, member_attributes, effects=("Off", "Party", "Relax")):
 
 def test_a_static_look_needs_a_colour_and_a_brightness():
     with pytest.raises(StoreError):
-        Look(id="l", name="L", mode=LOOK_MODE_STATIC, brightness=None)
+        Theme(id="l", name="L", mode=THEME_MODE_STATIC, brightness=None)
     with pytest.raises(StoreError, match="colour"):
-        Look(id="l", name="L", mode=LOOK_MODE_STATIC, brightness=40)
+        Theme(id="l", name="L", mode=THEME_MODE_STATIC, brightness=40)
 
 
 def test_an_effect_look_needs_an_effect_name():
     with pytest.raises(StoreError, match="effect"):
-        Look(id="l", name="L", mode=LOOK_MODE_EFFECT)
+        Theme(id="l", name="L", mode=THEME_MODE_EFFECT)
 
 
 def test_an_unknown_mode_is_refused():
     with pytest.raises(StoreError, match="mode"):
-        Look(id="l", name="L", mode="strobe")
+        Theme(id="l", name="L", mode="strobe")
 
 
 async def test_the_default_looks_are_seeded(hass):
     store = LightcurveStore(hass)
     await store.async_load()
-    looks = store.looks
-    assert {look.name for look in looks.values()} == {"Mood", "Movie", "Disco"}
-    assert looks["l_disco"].mode == LOOK_MODE_EFFECT
-    assert looks["l_disco"].effect == "Party"
+    themes = store.themes
+    assert {theme.name for theme in themes.values()} == {"Mood", "Movie", "Disco"}
+    assert themes["t_disco"].mode == THEME_MODE_EFFECT
+    assert themes["t_disco"].effect == "Party"
 
 
 async def test_looks_are_seeded_into_a_store_that_predates_them(hass, hass_storage):
-    """Anyone who installed before looks existed must still get them."""
+    """Anyone who installed before themes existed must still get them."""
     from custom_components.lightcurve.const import (
         DEFAULT_PROFILE,
         SETTINGS_DEFAULTS,
@@ -86,15 +86,15 @@ async def test_looks_are_seeded_into_a_store_that_predates_them(hass, hass_stora
     }
     store = LightcurveStore(hass)
     await store.async_load()
-    assert len(store.looks) == 3
+    assert len(store.themes) == 3
 
 
 async def test_a_look_cannot_reference_an_unknown_group(hass):
     store = LightcurveStore(hass)
     await store.async_load()
     with pytest.raises(StoreError, match="unknown groups"):
-        await store.async_put_look(
-            Look(
+        await store.async_put_theme(
+            Theme(
                 id="l_x",
                 name="X",
                 brightness=50,
@@ -110,8 +110,8 @@ async def test_a_look_cannot_reference_an_unknown_group(hass):
 async def test_a_static_look_sets_its_values(hass, member_attributes):
     coordinator, group, _ = await build(hass, member_attributes)
     calls = async_mock_service(hass, "light", "turn_on")
-    look = Look(
-        id="l_movie",
+    theme = Theme(
+        id="t_movie",
         name="Movie",
         brightness=5,
         colour={"mode": "kelvin", "kelvin": 2200},
@@ -119,7 +119,7 @@ async def test_a_static_look_sets_its_values(hass, member_attributes):
     )
 
     with freeze_time(MORNING_UTC):
-        applied = await coordinator.async_apply_look(look)
+        applied = await coordinator.async_apply_theme(theme)
 
     assert applied == [group.id]
     assert calls
@@ -132,8 +132,8 @@ async def test_a_look_holds_against_the_curve(hass, member_attributes):
     Movie mode would last about a minute."""
     coordinator, group, _ = await build(hass, member_attributes)
     async_mock_service(hass, "light", "turn_on")
-    look = Look(
-        id="l_movie",
+    theme = Theme(
+        id="t_movie",
         name="Movie",
         brightness=5,
         colour={"mode": "kelvin", "kelvin": 2200},
@@ -141,7 +141,7 @@ async def test_a_look_holds_against_the_curve(hass, member_attributes):
     )
 
     with freeze_time(MORNING_UTC):
-        await coordinator.async_apply_look(look)
+        await coordinator.async_apply_theme(theme)
 
     runtime = coordinator.runtime(group.id)
     assert runtime.override_colour is True
@@ -150,23 +150,23 @@ async def test_a_look_holds_against_the_curve(hass, member_attributes):
     calls = async_mock_service(hass, "light", "turn_on")
     with freeze_time("2026-09-30 09:00:00"):
         await coordinator.async_apply(group)
-    assert calls == [], "the curve must not overwrite a look"
+    assert calls == [], "the curve must not overwrite a theme"
 
 
 async def test_turning_the_room_off_and_on_releases_the_look(hass, member_attributes):
-    """A look needs no explicit exit: cycling the room is the release."""
+    """A theme needs no explicit exit: cycling the room is the release."""
     coordinator, group, _ = await build(hass, member_attributes)
     async_mock_service(hass, "light", "turn_on")
     async_mock_service(hass, "light", "turn_off")
-    look = Look(
-        id="l_mood",
+    theme = Theme(
+        id="t_mood",
         name="Mood",
         brightness=25,
         colour={"mode": "kelvin", "kelvin": 2200},
         groups=[group.id],
     )
     with freeze_time(MORNING_UTC):
-        await coordinator.async_apply_look(look)
+        await coordinator.async_apply_theme(theme)
         await coordinator.async_turn_off(group)
 
     assert coordinator.runtime(group.id).overridden is False
@@ -177,13 +177,13 @@ async def test_an_effect_look_sends_the_effect(hass, member_attributes):
     about one colour change a second, which is not disco."""
     coordinator, group, _ = await build(hass, member_attributes)
     calls = async_mock_service(hass, "light", "turn_on")
-    look = Look(
-        id="l_disco", name="Disco", mode=LOOK_MODE_EFFECT, effect="Party",
+    theme = Theme(
+        id="t_disco", name="Disco", mode=THEME_MODE_EFFECT, effect="Party",
         groups=[group.id],
     )
 
     with freeze_time(MORNING_UTC):
-        applied = await coordinator.async_apply_look(look)
+        applied = await coordinator.async_apply_theme(theme)
 
     assert applied == [group.id]
     assert calls[0].data["effect"] == "Party"
@@ -192,31 +192,31 @@ async def test_an_effect_look_sends_the_effect(hass, member_attributes):
 
 async def test_an_effect_the_bulbs_do_not_have_is_skipped(hass, member_attributes):
     """Effect names are device-specific. Sending one a bulb rejects would make the
-    whole look appear broken because of a single member."""
+    whole theme appear broken because of a single member."""
     coordinator, group, _ = await build(hass, member_attributes, effects=("Off", "Relax"))
     calls = async_mock_service(hass, "light", "turn_on")
-    look = Look(
-        id="l_disco", name="Disco", mode=LOOK_MODE_EFFECT, effect="Party",
+    theme = Theme(
+        id="t_disco", name="Disco", mode=THEME_MODE_EFFECT, effect="Party",
         groups=[group.id],
     )
 
     with freeze_time(MORNING_UTC):
-        applied = await coordinator.async_apply_look(look)
+        applied = await coordinator.async_apply_theme(theme)
 
-    assert applied == [], "a look that cannot run should report doing nothing"
+    assert applied == [], "a theme that cannot run should report doing nothing"
     assert calls == []
 
 
 async def test_a_look_with_no_groups_covers_them_all(hass, member_attributes):
     coordinator, group, _ = await build(hass, member_attributes)
     calls = async_mock_service(hass, "light", "turn_on")
-    look = Look(
+    theme = Theme(
         id="l_all", name="All", brightness=40,
         colour={"mode": "kelvin", "kelvin": 3000}, groups=[],
     )
 
     with freeze_time(MORNING_UTC):
-        applied = await coordinator.async_apply_look(look)
+        applied = await coordinator.async_apply_theme(theme)
 
     assert applied == [group.id]
     assert calls
@@ -225,13 +225,13 @@ async def test_a_look_with_no_groups_covers_them_all(hass, member_attributes):
 async def test_a_hold_timeout_sets_a_deadline(hass, member_attributes):
     coordinator, group, _ = await build(hass, member_attributes)
     async_mock_service(hass, "light", "turn_on")
-    look = Look(
+    theme = Theme(
         id="l_t", name="Timed", brightness=40,
         colour={"mode": "kelvin", "kelvin": 3000}, groups=[group.id],
         hold_minutes=90,
     )
     with freeze_time(MORNING_UTC):
-        await coordinator.async_apply_look(look)
+        await coordinator.async_apply_theme(theme)
     assert coordinator.runtime(group.id).override_until is not None
 
 
@@ -240,13 +240,13 @@ async def test_a_look_naming_a_missing_group_does_not_break_the_rest(
 ):
     coordinator, group, _ = await build(hass, member_attributes)
     async_mock_service(hass, "light", "turn_on")
-    look = Look(
+    theme = Theme(
         id="l_x", name="X", brightness=30,
         colour={"mode": "kelvin", "kelvin": 3000},
         groups=["g_gone", group.id],
     )
     with freeze_time(MORNING_UTC):
-        applied = await coordinator.async_apply_look(look)
+        applied = await coordinator.async_apply_theme(theme)
     assert applied == [group.id]
 
 
@@ -265,7 +265,7 @@ async def test_activating_the_scene_applies_the_look(hass, integration):
 
 async def test_the_scene_is_named_exactly_the_look(hass, integration):
     """Siri matches on the friendly name, so "Movie" must be "Movie" and not
-    "Lightcurve looks Movie"."""
+    "Lightcurve themes Movie"."""
     state = hass.states.get("scene.movie")
     assert state is not None
     assert state.attributes["friendly_name"] == "Movie"

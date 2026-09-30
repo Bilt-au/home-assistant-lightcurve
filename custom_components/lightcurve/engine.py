@@ -533,7 +533,7 @@ def validate(
 ) -> list[ValidationIssue]:
     """Check a profile across the year, not just today.
 
-    Sun-relative keyframes move by hours between solstices, so a profile that looks
+    Sun-relative keyframes move by hours between solstices, so a profile that themes
     fine on the day it is written can collide, reorder, or cut a colour section in
     half six months later. Sampling every fifth day covers that at a fraction of the
     cost of all 365, since sun times move smoothly.
