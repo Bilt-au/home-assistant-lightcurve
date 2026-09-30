@@ -56,6 +56,7 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CHANNEL_BRIGHTNESS,
     CHANNEL_COLOUR,
+    DOMAIN,
     POWER_RESTORE_APPLY_CURVE,
     POWER_RESTORE_RESTORE_PREVIOUS,
     POWER_RESTORE_TURN_OFF,
@@ -206,12 +207,28 @@ class LightcurveCoordinator:
         An explicit member list always wins, so a group can override its area. When
         only an area is set, membership is derived live from the registry, which is
         what makes a newly added bulb join its room without reconfiguration.
+
+        Our own wrapper lights are always excluded. A wrapper that ended up in its
+        own group would command itself: the service call routes straight back into
+        async_turn_on, which sends to the members, which include the wrapper — an
+        unbounded chain of awaited service calls that exhausts memory in seconds.
+        A wrapper landing in the area it drives is not exotic, it is the obvious
+        thing for someone tidying up their device list to do.
         """
         if group.members:
-            return list(group.members)
-        if not group.area_id:
+            candidates = list(group.members)
+        elif group.area_id:
+            candidates = members_for_area(self.hass, group.area_id)
+        else:
             return []
-        return members_for_area(self.hass, group.area_id)
+        return [e for e in candidates if not self.owns_entity(e)]
+
+    def owns_entity(self, entity_id: str) -> bool:
+        """Is this one of Lightcurve's own entities?"""
+        from homeassistant.helpers import entity_registry as er
+
+        entry = er.async_get(self.hass).async_get(entity_id)
+        return entry is not None and entry.platform == DOMAIN
 
     def available_members(self, group: Group) -> list[str]:
         out = []
@@ -333,6 +350,7 @@ class LightcurveCoordinator:
         runtime.target = target
 
         members = only_members or self.available_members(group)
+        members = [e for e in members if not self.owns_entity(e)]
         if not members:
             return
 
@@ -535,6 +553,7 @@ class LightcurveCoordinator:
         with different capabilities, and a single fan-out call would have to send all
         of them the same payload.
         """
+        members = [e for e in members if not self.owns_entity(e)]
         if not members:
             return
         runtime = self.runtime(group.id)
@@ -818,6 +837,10 @@ def members_for_area(hass: HomeAssistant, area_id: str) -> list[str]:
     out: list[str] = []
     for entry in entities.entities.values():
         if entry.domain != "light" or entry.disabled_by is not None:
+            continue
+        # Never return our own wrapper lights: a group containing its own wrapper
+        # would drive itself in an unbounded loop. See LightcurveCoordinator.members.
+        if entry.platform == DOMAIN:
             continue
         effective = entry.area_id
         if effective is None and entry.device_id:
