@@ -114,10 +114,14 @@ Measured, not assumed. Full detail in `docs/spec.md` Appendix C.
 
 Requires **Python 3.14 or newer** — Home Assistant 2026.9 declares
 `requires_python >=3.14.2`, and on an older interpreter pip hides every 2026.x release
-and reports it as missing.
+and reports it as missing rather than incompatible.
+
+The repository pins its interpreter in `.python-version`, so with pyenv installed
+`python` resolves correctly on its own:
 
 ```bash
-python3.14 -m venv .venv && source .venv/bin/activate
+pyenv install 3.14.7      # needs pyenv >= 2.7; older build definitions stop at 3.14.0rc2
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt   # pins the exact HA the integration targets
 pytest
 ruff check custom_components/ tests/

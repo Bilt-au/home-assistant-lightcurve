@@ -792,3 +792,12 @@ are suppressed, and this is what keeps the next API change from passing silently
 Worth remembering as a general trap: a pip "no matching distribution" error for a
 version you can see on PyPI usually means an interpreter constraint, not a missing
 release.
+
+**Toolchain, for reproducibility.** Python 3.14.7 is installed through pyenv and
+pinned by `.python-version` in the repository root, so the interpreter is part of the
+checkout rather than something to remember. Two snags worth recording: pyenv's own
+build definitions had to be updated first (2.6.7 offered nothing above `3.14.0rc2`,
+below HA's `>=3.14.2` floor), and verifying which interpreter a shell resolves needs
+care — `zsh -l -c` inherits `PATH` from its parent and does not source `.zshrc` at
+all, so it reports the calling environment rather than a fresh terminal. Checking
+`~/.pyenv/shims/python` directly is the reliable test.
