@@ -36,11 +36,11 @@ class LightcurveOverrideSensor(LightcurveEntity, BinarySensorEntity):
 
     @property
     def is_on(self) -> bool:
-        return self.coordinator.runtime(self.group.id).overridden
+        return self.coordinator.runtime(self.curve_group.id).overridden
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        runtime = self.coordinator.runtime(self.group.id)
+        runtime = self.coordinator.runtime(self.curve_group.id)
         return {
             ATTR_OVERRIDE_COLOUR: runtime.override_colour,
             ATTR_OVERRIDE_BRIGHTNESS: runtime.override_brightness,

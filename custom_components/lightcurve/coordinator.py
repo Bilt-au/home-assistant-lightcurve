@@ -21,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
@@ -88,6 +89,15 @@ SUN_EVENTS: dict[str, str] = {
 
 RGB_MODES = {ColorMode.HS, ColorMode.RGB, ColorMode.RGBW, ColorMode.RGBWW, ColorMode.XY}
 
+#: A wrapper light being commanded faster than this is not a person pressing a
+#: button. It is another integration reacting to the state change our own command
+#: produced, and us reacting to it in turn. Left alone that loop allocates service
+#: calls and contexts until Home Assistant is killed, so it is capped here rather
+#: than trusted not to happen.
+STORM_WINDOW_SECONDS = 10.0
+STORM_LIMIT = 20
+STORM_COOLDOWN_SECONDS = 60.0
+
 #: How many of our own command contexts to remember for override detection.
 MAX_REMEMBERED_CONTEXTS = 512
 
@@ -116,6 +126,9 @@ class GroupRuntime:
     suppress_until: dict[str, float] = field(default_factory=dict)
     pre_outage: dict[str, dict[str, Any]] = field(default_factory=dict)
     warned: set[str] = field(default_factory=set)
+    #: Timestamps of recent externally-initiated turn_on calls, for storm detection.
+    recent_turn_ons: deque[float] = field(default_factory=lambda: deque(maxlen=64))
+    storm_until: float = 0.0
     #: While the editor's scrubber is driving this group, the scheduler stands back
     #: rather than fighting it for control of the same bulbs.
     previewing: bool = False
@@ -158,6 +171,7 @@ class LightcurveCoordinator:
             async_track_time_interval(self.hass, self._async_tick, interval)
         )
         self._resubscribe_members()
+        self._warn_about_competing_integrations()
         await self.async_apply_all(force=True)
 
     async def async_shutdown(self) -> None:
@@ -183,6 +197,53 @@ class LightcurveCoordinator:
     def _notify(self) -> None:
         for update in list(self._listeners):
             update()
+
+    def _warn_about_competing_integrations(self) -> None:
+        """Say so at startup when something else is driving the same lights.
+
+        Two cases, and they are not equally bad. Another integration adapting our
+        *member bulbs* fights the curve: its writes read as manual changes and the
+        group stops following within a tick. Another integration adapting our
+        *wrapper* is worse, because it is a loop — it commands the wrapper, we
+        command the bulbs, we publish our state, and it reacts to that. The circuit
+        breaker keeps that from exhausting memory, but the cause is a configuration
+        only the user can fix, and it is invisible unless we name it.
+        """
+        from homeassistant.helpers import entity_registry as er
+
+        registry = er.async_get(self.hass)
+        wrappers = {
+            entry.entity_id
+            for entry in registry.entities.values()
+            if entry.platform == DOMAIN and entry.domain == "light"
+        }
+        members: set[str] = set()
+        for group in self.groups.values():
+            members.update(self.members(group))
+
+        for state in self.hass.states.async_all("switch"):
+            if "adaptive_lighting" not in state.entity_id:
+                continue
+            configured = set(state.attributes.get("lights") or [])
+            clashing_wrappers = sorted(configured & wrappers)
+            if clashing_wrappers:
+                _LOGGER.error(
+                    "%s is configured to control %s, which is a Lightcurve wrapper"
+                    " light. The two will drive each other in a loop. Remove %s from"
+                    " that integration",
+                    state.entity_id,
+                    ", ".join(clashing_wrappers),
+                    ", ".join(clashing_wrappers),
+                )
+            clashing_members = sorted(configured & members)
+            if clashing_members:
+                _LOGGER.warning(
+                    "%s is also adapting %s, which Lightcurve drives. Its changes"
+                    " count as manual overrides, so the curve will stop within about"
+                    " a minute of a light coming on",
+                    state.entity_id,
+                    ", ".join(clashing_members),
+                )
 
     def _resubscribe_members(self) -> None:
         """Watch every current member light for foreign changes."""
@@ -567,12 +628,48 @@ class LightcurveCoordinator:
 
     # --- turn on / off, driven by the wrapper light -----------------------------
 
+    def _is_storm(self, group: Group) -> bool:
+        """Is something driving this wrapper in a feedback loop?
+
+        Two adaptive systems pointed at the same light will each react to the other's
+        writes. Nothing downstream of that is safe to keep doing, so the wrapper stops
+        accepting commands for a cooldown and says why. Dropping a command is a far
+        better failure than exhausting memory and taking Home Assistant down.
+        """
+        runtime = self.runtime(group.id)
+        now = time.monotonic()
+        if now < runtime.storm_until:
+            return True
+
+        runtime.recent_turn_ons.append(now)
+        cutoff = now - STORM_WINDOW_SECONDS
+        while runtime.recent_turn_ons and runtime.recent_turn_ons[0] < cutoff:
+            runtime.recent_turn_ons.popleft()
+
+        if len(runtime.recent_turn_ons) <= STORM_LIMIT:
+            return False
+
+        runtime.storm_until = now + STORM_COOLDOWN_SECONDS
+        runtime.recent_turn_ons.clear()
+        self._warn_once(
+            group,
+            f"ignoring commands for {STORM_COOLDOWN_SECONDS:.0f}s: this light was"
+            f" commanded more than {STORM_LIMIT} times in"
+            f" {STORM_WINDOW_SECONDS:.0f}s, which usually means another integration"
+            " such as Adaptive Lighting is also driving it and the two are reacting"
+            " to each other. Remove this light from the other integration",
+            None,
+        )
+        return True
+
     async def async_turn_on(self, group: Group, **kwargs: Any) -> None:
         """Turn a group on, applying the curve unless explicit values were given.
 
         Explicit values create an override on that channel only, so "set the lounge
         to 40 %" holds the brightness while colour keeps tracking the curve.
         """
+        if self._is_storm(group):
+            return
         runtime = self.runtime(group.id)
         target = self.target_for(group)
 

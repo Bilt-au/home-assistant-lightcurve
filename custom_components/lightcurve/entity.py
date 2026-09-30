@@ -35,8 +35,13 @@ class LightcurveEntity(Entity):
         )
 
     @property
-    def group(self) -> Group:
-        """Re-read from the store so edits are picked up without recreating entities."""
+    def curve_group(self) -> Group:
+        """Re-read from the store so edits are picked up without recreating entities.
+
+        Deliberately not called `group`: Home Assistant reserves that name on Entity,
+        and shadowing it makes the framework warn on every entity and is slated to
+        stop working in 2027.2.
+        """
         return self.coordinator.store.group(self._group_id)
 
     async def async_added_to_hass(self) -> None:

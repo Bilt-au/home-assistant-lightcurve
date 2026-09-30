@@ -67,7 +67,7 @@ class LightcurveGroupLight(LightcurveEntity, LightEntity):
     def supported_color_modes(self) -> set[ColorMode]:
         """Only what every member can do, so a command never fails on one bulb."""
         modes: set[ColorMode] | None = None
-        for entity_id in self.coordinator.available_members(self.group):
+        for entity_id in self.coordinator.available_members(self.curve_group):
             state = self.hass.states.get(entity_id)
             if state is None:
                 continue
@@ -85,27 +85,27 @@ class LightcurveGroupLight(LightcurveEntity, LightEntity):
 
     @property
     def min_color_temp_kelvin(self) -> int:
-        low, _ = self.coordinator.kelvin_range(self.group)
+        low, _ = self.coordinator.kelvin_range(self.curve_group)
         return low or FALLBACK_MIN_KELVIN
 
     @property
     def max_color_temp_kelvin(self) -> int:
-        _, high = self.coordinator.kelvin_range(self.group)
+        _, high = self.coordinator.kelvin_range(self.curve_group)
         return high or FALLBACK_MAX_KELVIN
 
     # --- state -----------------------------------------------------------------
 
     @property
     def available(self) -> bool:
-        return bool(self.coordinator.available_members(self.group))
+        return bool(self.coordinator.available_members(self.curve_group))
 
     @property
     def is_on(self) -> bool:
-        return self.coordinator.is_on(self.group)
+        return self.coordinator.is_on(self.curve_group)
 
     @property
     def color_mode(self) -> ColorMode:
-        target = self.coordinator.runtime(self.group.id).target
+        target = self.coordinator.runtime(self.curve_group.id).target
         supported = self.supported_color_modes
         if target is None:
             return next(iter(supported))
@@ -117,24 +117,24 @@ class LightcurveGroupLight(LightcurveEntity, LightEntity):
 
     @property
     def brightness(self) -> int | None:
-        target = self.coordinator.runtime(self.group.id).target
+        target = self.coordinator.runtime(self.curve_group.id).target
         if target is None:
             return None
         return round(target.brightness_pct / 100 * 255)
 
     @property
     def color_temp_kelvin(self) -> int | None:
-        target = self.coordinator.runtime(self.group.id).target
+        target = self.coordinator.runtime(self.curve_group.id).target
         return target.kelvin if target and target.mode == "kelvin" else None
 
     @property
     def hs_color(self) -> tuple[float, float] | None:
-        target = self.coordinator.runtime(self.group.id).target
+        target = self.coordinator.runtime(self.curve_group.id).target
         return target.hs if target and target.mode == "hs" else None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        group = self.group
+        group = self.curve_group
         runtime = self.coordinator.runtime(group.id)
         target = runtime.target
         members = self.coordinator.members(group)
@@ -172,7 +172,7 @@ class LightcurveGroupLight(LightcurveEntity, LightEntity):
             forwarded[ATTR_COLOR_TEMP_KELVIN] = kwargs[ATTR_COLOR_TEMP_KELVIN]
         if ATTR_HS_COLOR in kwargs:
             forwarded[ATTR_HS_COLOR] = list(kwargs[ATTR_HS_COLOR])
-        await self.coordinator.async_turn_on(self.group, **forwarded)
+        await self.coordinator.async_turn_on(self.curve_group, **forwarded)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await self.coordinator.async_turn_off(self.group)
+        await self.coordinator.async_turn_off(self.curve_group)

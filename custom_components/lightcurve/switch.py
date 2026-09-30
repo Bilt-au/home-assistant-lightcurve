@@ -41,7 +41,7 @@ class LightcurveEnabledSwitch(LightcurveEntity, SwitchEntity):
 
     @property
     def is_on(self) -> bool:
-        return self.group.enabled
+        return self.curve_group.enabled
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self._async_set(True)
@@ -50,7 +50,7 @@ class LightcurveEnabledSwitch(LightcurveEntity, SwitchEntity):
         await self._async_set(False)
 
     async def _async_set(self, enabled: bool) -> None:
-        group = self.group
+        group = self.curve_group
         group.enabled = enabled
         await self.coordinator.store.async_put_group(group)
         if enabled:

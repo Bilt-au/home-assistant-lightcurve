@@ -50,7 +50,7 @@ class LightcurveProfileSelect(LightcurveEntity, SelectEntity):
 
     @property
     def current_option(self) -> str | None:
-        group = self.group
+        group = self.curve_group
         profile = self.coordinator.store.profiles.get(group.profile_id)
         if profile is None:
             return None
@@ -60,7 +60,7 @@ class LightcurveProfileSelect(LightcurveEntity, SelectEntity):
         profile_id = self._by_name().get(option)
         if profile_id is None:
             return
-        group = self.group
+        group = self.curve_group
         group.profile_id = profile_id
         await self.coordinator.store.async_put_group(group)
         # Switching profile should be visible immediately, and it invalidates any

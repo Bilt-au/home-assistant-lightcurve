@@ -51,14 +51,14 @@ class LightcurveTargetSensor(LightcurveEntity, SensorEntity):
 
     @property
     def native_value(self) -> int | None:
-        target = self.coordinator.runtime(self.group.id).target
+        target = self.coordinator.runtime(self.curve_group.id).target
         if target is None or target.mode != "kelvin":
             return None
         return target.kelvin
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        target = self.coordinator.runtime(self.group.id).target
+        target = self.coordinator.runtime(self.curve_group.id).target
         return {
             "mode": target.mode if target else None,
             ATTR_TARGET_KELVIN: target.kelvin if target else None,
