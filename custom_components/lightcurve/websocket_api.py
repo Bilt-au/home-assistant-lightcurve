@@ -306,12 +306,14 @@ async def looks_list(hass, connection, msg, coordinator) -> None:
             {
                 **look.to_dict(),
                 "covers": [names.get(g, g) for g in covered],
-                # A look is "active" when every group it covers is overridden. That
-                # is not proof this particular look is showing, but it is the honest
-                # signal available: the curve is not in charge of those lights.
+                # Which look is showing, not merely whether something is. Deriving
+                # this from the override flags lit up every look that covered the
+                # room as soon as any one of them was applied.
                 "holding": bool(covered)
                 and all(
-                    coordinator.runtime(g).overridden for g in covered if g in names
+                    coordinator.runtime(g).active_look == look.id
+                    for g in covered
+                    if g in names
                 ),
             }
         )

@@ -126,6 +126,10 @@ class GroupRuntime:
     suppress_until: dict[str, float] = field(default_factory=dict)
     pre_outage: dict[str, dict[str, Any]] = field(default_factory=dict)
     warned: set[str] = field(default_factory=set)
+    #: Which look is currently showing, if any. Inferring this from the override
+    #: flags does not work: every look covering a room would report itself active
+    #: the moment any one of them was applied.
+    active_look: str | None = None
     #: Timestamps of recent externally-initiated turn_on calls, for storm detection.
     recent_turn_ons: deque[float] = field(default_factory=lambda: deque(maxlen=64))
     storm_until: float = 0.0
@@ -141,6 +145,7 @@ class GroupRuntime:
         self.override_colour = False
         self.override_brightness = False
         self.override_until = None
+        self.active_look = None
 
 
 class LightcurveCoordinator:
@@ -416,6 +421,7 @@ class LightcurveCoordinator:
             runtime = self.runtime(group.id)
             runtime.override_colour = True
             runtime.override_brightness = True
+            runtime.active_look = look.id
             runtime.override_until = (
                 dt_util.utcnow() + timedelta(minutes=look.hold_minutes)
                 if look.hold_minutes
@@ -682,6 +688,8 @@ class LightcurveCoordinator:
             runtime.override_brightness = True
         if ATTR_COLOR_TEMP_KELVIN in kwargs or ATTR_HS_COLOR in kwargs:
             runtime.override_colour = True
+        # Whatever look was showing is not showing any more.
+        runtime.active_look = None
         self._set_override_deadline(group, runtime)
 
         data = dict(kwargs)
@@ -781,6 +789,7 @@ class LightcurveCoordinator:
             runtime.override_colour = True
         if CHANNEL_BRIGHTNESS in channels:
             runtime.override_brightness = True
+        runtime.active_look = None
         runtime.override_until = (
             dt_util.utcnow() + timedelta(minutes=duration_minutes)
             if duration_minutes
@@ -850,6 +859,8 @@ class LightcurveCoordinator:
             runtime.override_colour = True
         if brightness_changed:
             runtime.override_brightness = True
+        # Someone has changed these lights by hand, so the look is gone.
+        runtime.active_look = None
         self._set_override_deadline(group, runtime)
         _LOGGER.debug(
             "%s: foreign change on %s (colour=%s brightness=%s)",

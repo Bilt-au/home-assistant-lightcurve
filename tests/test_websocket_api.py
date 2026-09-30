@@ -392,3 +392,59 @@ async def test_applying_an_unknown_look_errors(ws):
     reply = await call(ws, {"type": "lightcurve/looks/apply", "look_id": "nope"})
     assert not reply["success"]
     assert reply["error"]["code"] == "not_found"
+
+
+async def test_only_the_applied_look_shows_as_holding(hass, ws):
+    """The bug this guards: every look covering the room lit up as soon as any one
+    of them was applied, because "holding" was derived from the override flags
+    rather than from which look was actually showing."""
+    from pytest_homeassistant_custom_component.common import async_mock_service
+
+    async_mock_service(hass, "light", "turn_on")
+    with freeze_time(MORNING_UTC):
+        await call(ws, {"type": "lightcurve/looks/apply", "look_id": "l_movie"})
+        reply = await call(ws, {"type": "lightcurve/looks/list"})
+
+    holding = {look["name"]: look["holding"] for look in reply["result"]["looks"]}
+    assert holding == {"Movie": True, "Mood": False, "Disco": False}
+
+
+async def test_switching_look_moves_the_highlight(hass, ws):
+    from pytest_homeassistant_custom_component.common import async_mock_service
+
+    async_mock_service(hass, "light", "turn_on")
+    with freeze_time(MORNING_UTC):
+        await call(ws, {"type": "lightcurve/looks/apply", "look_id": "l_movie"})
+        await call(ws, {"type": "lightcurve/looks/apply", "look_id": "l_mood"})
+        reply = await call(ws, {"type": "lightcurve/looks/list"})
+
+    holding = {look["name"]: look["holding"] for look in reply["result"]["looks"]}
+    assert holding["Mood"] is True
+    assert holding["Movie"] is False
+
+
+async def test_a_manual_change_clears_the_highlight(hass, ws):
+    """Once someone dims the room by hand, the look is not what is showing."""
+    from pytest_homeassistant_custom_component.common import async_mock_service
+
+    async_mock_service(hass, "light", "turn_on")
+    coordinator = next(iter(hass.data["lightcurve"].values()))
+    group = coordinator.store.group("g_toilet")
+
+    with freeze_time(MORNING_UTC):
+        await call(ws, {"type": "lightcurve/looks/apply", "look_id": "l_mood"})
+        await coordinator.async_turn_on(group, brightness_pct=70)
+        reply = await call(ws, {"type": "lightcurve/looks/list"})
+
+    assert all(not look["holding"] for look in reply["result"]["looks"])
+
+
+async def test_releasing_clears_the_highlight(hass, ws):
+    from pytest_homeassistant_custom_component.common import async_mock_service
+
+    async_mock_service(hass, "light", "turn_on")
+    with freeze_time(MORNING_UTC):
+        await call(ws, {"type": "lightcurve/looks/apply", "look_id": "l_mood"})
+        await call(ws, {"type": "lightcurve/looks/release"})
+        reply = await call(ws, {"type": "lightcurve/looks/list"})
+    assert all(not look["holding"] for look in reply["result"]["looks"])
