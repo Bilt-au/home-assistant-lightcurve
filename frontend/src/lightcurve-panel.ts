@@ -8,7 +8,10 @@
 import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import "./curve-graph";
+import { applyMorphToKeyframes, type Lane } from "./apply-morph";
+import type { Point } from "./fit";
 import { formatMinute, parseMinute } from "./geometry";
+import { morphToward, radiusForWidth } from "./morph";
 import type {
   Group,
   Keyframe,
@@ -52,6 +55,9 @@ export class LightcurvePanel extends LitElement {
 
   private lastScrubAt = 0;
   private resizeObserver?: ResizeObserver;
+  /** The live deformation, kept out of @state because it changes every pointer
+   *  move and Lit re-renders from `samples` anyway. */
+  private morphRegion: { centre: number; radius: number } | null = null;
 
   static override styles = css`
     :host {
@@ -287,6 +293,63 @@ export class LightcurvePanel extends LitElement {
     this.selectedId = event.detail.id;
   };
 
+  /** Deform the displayed curve as the cursor moves.
+   *
+   *  Entirely local: a server round trip per pointer move would never keep up, so
+   *  the samples are morphed in place and only converted back to keyframes on
+   *  release, when one request is enough.
+   */
+  private onMorph = (event: CustomEvent): void => {
+    const { lane, minute, value, plotWidth } = event.detail as {
+      lane: Lane;
+      minute: number;
+      value: number;
+      plotWidth: number;
+    };
+    const radius = radiusForWidth(plotWidth);
+    const bounds =
+      lane === "brightness"
+        ? { min: 1, max: 100 }
+        : lane === "warmth"
+          ? { min: 2200, max: 6500 }
+          : { min: 0, max: 360, wrapValue: true };
+
+    const points: Point[] = this.samples.map((sample) => ({
+      minute: sample.minute,
+      value: laneValue(sample, lane),
+    }));
+    const moved = morphToward(points, minute, value, { radiusMinutes: radius, ...bounds });
+
+    this.samples = this.samples.map((sample, index) =>
+      withLaneValue(sample, lane, moved[index].value)
+    );
+    this.morphRegion = { centre: minute, radius };
+    this.dirty = true;
+  };
+
+  /** On release, fold the drawn shape back into keyframes and re-evaluate. */
+  private onMorphCommit = (event: CustomEvent): void => {
+    if (!this.profile || !this.morphRegion) return;
+    const lane = (event.detail as { lane: Lane }).lane;
+    const points: Point[] = this.samples.map((sample) => ({
+      minute: sample.minute,
+      value: laneValue(sample, lane),
+    }));
+    const keyframes = applyMorphToKeyframes(
+      this.keyframes,
+      this.resolved,
+      lane,
+      points,
+      this.morphRegion
+    );
+    this.profile = {
+      ...this.profile,
+      variants: { ...this.profile.variants, [this.variant]: { keyframes } },
+    };
+    this.morphRegion = null;
+    void this.refreshGraph();
+  };
+
   private onScrub = (event: CustomEvent): void => {
     this.scrubMinute = event.detail.minute;
     const now = Date.now();
@@ -434,12 +497,15 @@ export class LightcurvePanel extends LitElement {
           @keyframe-move=${this.onKeyframeMove}
           @keyframe-commit=${this.onKeyframeCommit}
           @keyframe-select=${this.onSelect}
+          @curve-morph=${this.onMorph}
+          @morph-commit=${this.onMorphCommit}
           @scrub=${this.onScrub}
           @scrub-end=${this.onScrubEnd}
         ></lightcurve-curve-graph>
         <p class="hint">
-          Drag a handle to move a keyframe. Drop one near a sun marker to make it
-          follow that event. Drag anywhere else to preview that time of day on
+          Drag anywhere on a lane to bend the curve around your cursor. Drag a
+          handle to move that keyframe, and drop it near a sun marker to make it
+          follow that event. The strip at the bottom previews a time of day on
           ${group ? group.name : "the selected room"}.
         </p>
       </div>
@@ -551,6 +617,25 @@ export class LightcurvePanel extends LitElement {
       </div>
     `;
   }
+}
+
+/** Read one lane's value out of a sample. */
+function laneValue(sample: Sample, lane: Lane): number {
+  if (lane === "brightness") return sample.brightness_pct ?? 1;
+  if (lane === "warmth") return sample.kelvin ?? 2700;
+  return sample.hs ? sample.hs[0] : 0;
+}
+
+/** Put a morphed value back into a sample, keeping the rest of it intact. */
+function withLaneValue(sample: Sample, lane: Lane, value: number): Sample {
+  if (lane === "brightness") {
+    return { ...sample, brightness_pct: Math.round(value) };
+  }
+  if (lane === "warmth") {
+    return { ...sample, mode: "kelvin", kelvin: Math.round(value) };
+  }
+  const saturation = sample.hs ? sample.hs[1] : 100;
+  return { ...sample, mode: "hs", hs: [Math.round(value) % 360, saturation] };
 }
 
 function nowMinute(): number {

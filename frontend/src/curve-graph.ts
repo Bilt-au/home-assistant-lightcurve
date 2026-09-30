@@ -32,6 +32,7 @@ const GUTTER_LEFT = 46;
 const GUTTER_RIGHT = 14;
 const GUTTER_TOP = 22;
 const STRIP_HEIGHT = 26;
+const SCRUB_HEIGHT = 34;
 
 @customElement("lightcurve-curve-graph")
 export class CurveGraph extends LitElement {
@@ -46,6 +47,8 @@ export class CurveGraph extends LitElement {
   @property({ type: Number }) width = 900;
 
   @state() private dragging: { id: string; lane: Lane } | null = null;
+  @state() private morphing: Lane | null = null;
+  @state() private scrubbing = false;
 
   static override styles = css`
     :host {
@@ -126,6 +129,17 @@ export class CurveGraph extends LitElement {
       fill: transparent;
       cursor: grab;
     }
+    .scrub-bar {
+      fill: var(--secondary-background-color, #eee);
+      stroke: var(--divider-color, #ddd);
+      cursor: ew-resize;
+    }
+    .scrub-handle {
+      fill: var(--card-background-color, #fff);
+      stroke: var(--primary-color, #03a9f4);
+      stroke-width: 3;
+      pointer-events: none;
+    }
   `;
 
   private get plotWidth(): number {
@@ -142,8 +156,16 @@ export class CurveGraph extends LitElement {
     };
   }
 
+  private get lanesHeight(): number {
+    return GUTTER_TOP + 3 * (LANE_HEIGHT + LANE_GAP + STRIP_HEIGHT);
+  }
+
+  private get scrubTop(): number {
+    return this.lanesHeight + 6;
+  }
+
   private get totalHeight(): number {
-    return GUTTER_TOP + 3 * (LANE_HEIGHT + LANE_GAP + STRIP_HEIGHT) + 10;
+    return this.scrubTop + SCRUB_HEIGHT + 8;
   }
 
   override render(): TemplateResult {
@@ -159,7 +181,43 @@ export class CurveGraph extends LitElement {
         ${this.renderLane("brightness", "Brightness")}
         ${this.renderLane("warmth", "Warmth")}
         ${this.renderLane("colour", "Colour")}
+        ${this.renderScrubBar()}
       </svg>
+    `;
+  }
+
+  /** Previewing lives here, because dragging a lane now deforms the curve.
+   *  Keeping both on the same surface would mean a mode, and a mode means
+   *  sometimes dragging and getting the wrong one. */
+  private renderScrubBar(): TemplateResult {
+    const plot: Plot = {
+      left: GUTTER_LEFT,
+      top: this.scrubTop,
+      width: this.plotWidth,
+      height: SCRUB_HEIGHT,
+    };
+    const handle =
+      this.scrubMinute === null ? null : minuteToX(this.scrubMinute, plot);
+    return svg`
+      <g>
+        <rect class="scrub-bar" x=${plot.left} y=${plot.top}
+              width=${plot.width} height=${plot.height} rx=${SCRUB_HEIGHT / 2} />
+        ${this.samples.map((sample, index) => {
+          const next = this.samples[index + 1];
+          const x = minuteToX(sample.minute, plot);
+          const nextX = next ? minuteToX(next.minute, plot) : plot.left + plot.width;
+          const rgb = sample.rgb ?? [80, 80, 80];
+          return svg`<rect x=${x} y=${plot.top + 7}
+                           width=${Math.max(1, nextX - x)} height=${SCRUB_HEIGHT - 14}
+                           fill="rgb(${rgb[0]},${rgb[1]},${rgb[2]})" />`;
+        })}
+        <text class="axis-label" x=${plot.left - 6} y=${plot.top + SCRUB_HEIGHT / 2 + 3}
+              text-anchor="end">preview</text>
+        ${handle === null
+          ? ""
+          : svg`<circle class="scrub-handle" cx=${handle}
+                        cy=${plot.top + SCRUB_HEIGHT / 2} r="9" />`}
+      </g>
     `;
   }
 
@@ -381,32 +439,45 @@ export class CurveGraph extends LitElement {
 
   private onPointerDown(event: PointerEvent): void {
     const point = this.localPoint(event);
+    (event.target as Element).setPointerCapture?.(event.pointerId);
+
+    if (point.y >= this.scrubTop) {
+      this.scrubbing = true;
+      this.emitScrub(point.x);
+      return;
+    }
+
     const lane = this.laneAt(point.y);
     if (!lane) return;
     const plot = this.plotFor(lane);
+
     const hit = hitTest(point.x, point.y, this.handlesFor(plot, lane));
     if (hit) {
       this.dragging = { id: hit, lane };
       this.selectedId = hit;
-      (event.target as Element).setPointerCapture?.(event.pointerId);
       this.dispatchEvent(
         new CustomEvent("keyframe-select", { detail: { id: hit }, bubbles: true, composed: true })
       );
       return;
     }
-    // Not on a handle: treat as scrubbing the preview along the timeline.
-    this.dispatchEvent(
-      new CustomEvent("scrub", {
-        detail: { minute: xToMinute(point.x, plot) },
-        bubbles: true,
-        composed: true,
-      })
-    );
+
+    // Anywhere else on a lane grabs the curve itself.
+    this.morphing = lane;
+    this.emitMorph(lane, point);
   }
 
   private onPointerMove(event: PointerEvent): void {
+    const moved = this.localPoint(event);
+    if (this.scrubbing) {
+      this.emitScrub(moved.x);
+      return;
+    }
+    if (this.morphing) {
+      this.emitMorph(this.morphing, moved);
+      return;
+    }
     if (!this.dragging) return;
-    const point = this.localPoint(event);
+    const point = moved;
     const plot = this.plotFor(this.dragging.lane);
     const markers = Object.entries(this.sun)
       .filter(([, info]) => info)
@@ -432,12 +503,62 @@ export class CurveGraph extends LitElement {
   }
 
   private onPointerUp(): void {
+    if (this.morphing) {
+      const lane = this.morphing;
+      this.morphing = null;
+      this.dispatchEvent(
+        new CustomEvent("morph-commit", { detail: { lane }, bubbles: true, composed: true })
+      );
+      return;
+    }
+    if (this.scrubbing) {
+      this.scrubbing = false;
+      this.dispatchEvent(new CustomEvent("scrub-end", { bubbles: true, composed: true }));
+      return;
+    }
     if (this.dragging) {
       this.dragging = null;
       this.dispatchEvent(new CustomEvent("keyframe-commit", { bubbles: true, composed: true }));
-    } else {
-      this.dispatchEvent(new CustomEvent("scrub-end", { bubbles: true, composed: true }));
     }
+  }
+
+  private emitScrub(x: number): void {
+    const plot: Plot = {
+      left: GUTTER_LEFT,
+      top: this.scrubTop,
+      width: this.plotWidth,
+      height: SCRUB_HEIGHT,
+    };
+    this.dispatchEvent(
+      new CustomEvent("scrub", {
+        detail: { minute: xToMinute(x, plot) },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  /** Report where the cursor is, in this lane's own units. The panel owns the
+   *  sample data and does the deformation; the graph stays a view. */
+  private emitMorph(lane: Lane, point: { x: number; y: number }): void {
+    const plot = this.plotFor(lane);
+    const minute = xToMinute(point.x, plot);
+    let value: number;
+    if (lane === "brightness") {
+      value = yToBrightness(point.y, plot);
+    } else if (lane === "warmth") {
+      value = yToKelvin(point.y, plot, this.minKelvin, this.maxKelvin);
+    } else {
+      const fraction = 1 - (point.y - plot.top) / plot.height;
+      value = Math.round(Math.min(360, Math.max(0, fraction * 360)));
+    }
+    this.dispatchEvent(
+      new CustomEvent("curve-morph", {
+        detail: { lane, minute, value, plotWidth: plot.width },
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
 }
 

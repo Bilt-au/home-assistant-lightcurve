@@ -225,10 +225,17 @@ async def probe_info(client: HAClient, entities: list[str]) -> dict:
         )
         # An active Tapo light effect overrides colour commands, so it would fight
         # everything Lightcurve does. Worth knowing before blaming the scheduler.
-        if info["effect"]:
+        # "off" is a *value* of the effect attribute, not the absence of one, so a
+        # plain truthiness check reports every bulb as running an effect.
+        active = info["effect"] not in (None, "", "off", "None")
+        available = info["effect_list"] or []
+        if active:
             print(f"    effect          {info['effect']}  <-- ACTIVE, will fight the curve")
-        elif info["effect_list"]:
-            print(f"    effect          none active ({len(info['effect_list'])} available)")
+        elif available:
+            print(f"    effect          none active, {len(available)} available")
+            print(f"                    {', '.join(str(e) for e in available)}")
+        else:
+            print("    effect          none active, none offered")
     return out
 
 
