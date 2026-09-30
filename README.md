@@ -54,6 +54,30 @@ on its own with no reconfiguration.
 Those per-channel overrides are what make voice control pleasant: dimming the lights
 does not also freeze their colour for the rest of the evening.
 
+## The editor
+
+**Settings → sidebar → Lightcurve** opens a three-lane graph of the selected profile.
+
+**Brightness** is independent and always editable. **Warmth** and **Colour** are the
+same channel — a keyframe holds a colour temperature *or* a hue, never both, because
+a bulb cannot be 3000 K and red simultaneously — so each lane is greyed where the
+curve is in the other mode. Two freely editable lanes would imply a state the
+hardware cannot enter.
+
+- **Drag a handle** to move a keyframe in time and value.
+- **Drop one near a sun marker** and it converts to sun-relative, so it tracks
+  sunrise rather than pinning to the clock time sunrise happens to have today.
+- **Drag anywhere else** on the graph to scrub, and the selected room's real bulbs
+  follow that time of day. Releasing returns them to the curve.
+- **The gradient strip** under each lane is drawn from colours the engine computed,
+  not the browser's guess at what 2700 K looks like.
+
+Validation runs as you edit and samples the whole year, because the failures that
+matter here are seasonal: a profile that is fine in September can have two keyframes
+collide in June, or a sun keyframe drift inside the red night section and stop the
+colour holding. Errors block saving; warnings do not, since a warning about June
+should not stop you saving in September.
+
 ## Services
 
 | Service | What it does |
@@ -133,6 +157,17 @@ ruff check custom_components/ tests/
 `custom_components/lightcurve/engine.py` is pure Python with no Home Assistant
 imports, so the curve maths can be tested on its own — that is where most of the test
 suite lives.
+
+The editor lives in `frontend/` and builds to a single file committed under
+`custom_components/lightcurve/frontend/`, so installing from HACS needs no build step.
+CI fails if that bundle is out of date with its source.
+
+```bash
+cd frontend
+npm install
+npm test          # geometry and curve-fitting
+npm run build     # writes the committed bundle
+```
 
 `spike/` holds the throwaway tooling used to measure the bulbs before any of this was
 written. `spike/README.md` explains what each probe decides. If you are porting this

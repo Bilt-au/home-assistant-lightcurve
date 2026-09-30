@@ -29,6 +29,29 @@ jobs:
         with:
           category: integration
 
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      # The built panel is committed so HACS users need no build step. That only
+      # works if it is actually current, so a stale bundle fails here rather than
+      # shipping an editor that does not match its source.
+      - name: the committed bundle must match the source
+        run: git diff --exit-code -- ../custom_components/lightcurve/frontend
+
   tests:
     name: tests
     runs-on: ubuntu-latest
