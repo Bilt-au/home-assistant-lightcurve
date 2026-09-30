@@ -83,6 +83,9 @@ SUN_EVENTS: dict[str, str] = {
 
 RGB_MODES = {ColorMode.HS, ColorMode.RGB, ColorMode.RGBW, ColorMode.RGBWW, ColorMode.XY}
 
+#: How many of our own command contexts to remember for override detection.
+MAX_REMEMBERED_CONTEXTS = 512
+
 
 @dataclass
 class AppliedState:
@@ -126,7 +129,12 @@ class LightcurveCoordinator:
         self.hass = hass
         self.store = store
         self._runtime: dict[str, GroupRuntime] = {}
-        self._contexts: set[str] = set()
+        # An insertion-ordered mapping used as an ordered set, so pruning can evict
+        # the oldest rather than an arbitrary member. A plain set prunes in hash
+        # order, which can drop a context whose command is still in flight; that
+        # command's own state change then looks foreign and raises a false override —
+        # the precise failure this bookkeeping exists to prevent.
+        self._contexts: dict[str, None] = {}
         self._locks: dict[str, asyncio.Lock] = {}
         self._listeners: list[Callable[[], None]] = []
         self._unsubscribers: list[Callable[[], None]] = []
@@ -241,12 +249,12 @@ class LightcurveCoordinator:
         except (StoreError, CurveError) as err:
             self._warn_once(group, f"target: {err}", err)
             return None
-        low, high = self._kelvin_range(group)
+        low, high = self.kelvin_range(group)
         if low and high:
             target = clamp_target(target, low, high)
         return target
 
-    def _kelvin_range(self, group: Group) -> tuple[int | None, int | None]:
+    def kelvin_range(self, group: Group) -> tuple[int | None, int | None]:
         """The intersection of what the members support, per §7.3."""
         lows, highs = [], []
         for entity_id in self.available_members(group):
@@ -357,7 +365,7 @@ class LightcurveCoordinator:
             elif target.mode == "hs" and ColorMode.COLOR_TEMP in supported:
                 # A colour section on a white-only bulb: hold the warmest it can do
                 # rather than dropping the group's colour handling entirely.
-                low, _ = self._kelvin_range(group)
+                low, _ = self.kelvin_range(group)
                 if low:
                     data[ATTR_COLOR_TEMP_KELVIN] = low
                 self._warn_once(
@@ -547,11 +555,11 @@ class LightcurveCoordinator:
         self._notify()
 
     def _remember_context(self, context: Context) -> None:
-        self._contexts.add(context.id)
-        # Unbounded growth would be a slow leak; a tick only ever creates a handful.
-        if len(self._contexts) > 512:
-            for stale in list(self._contexts)[:256]:
-                self._contexts.discard(stale)
+        self._contexts[context.id] = None
+        # Unbounded growth would be a slow leak; a tick only creates a handful, so a
+        # few hundred is ample. Oldest out first.
+        while len(self._contexts) > MAX_REMEMBERED_CONTEXTS:
+            self._contexts.pop(next(iter(self._contexts)))
 
     def _is_ours(self, context: Context | None) -> bool:
         if context is None:

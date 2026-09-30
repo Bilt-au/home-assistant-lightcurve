@@ -11,6 +11,7 @@ import logging
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import entity_registry as er
 
 from .const import (
     CHANNELS,
@@ -50,40 +51,54 @@ SET_PROFILE_SCHEMA = vol.Schema(
 def _resolve(coordinator: LightcurveCoordinator, call: ServiceCall) -> list[Group]:
     """Work out which groups a call refers to.
 
+    An `entity_id` target is resolved through the entity registry, matching on the
+    unique_id this integration assigned. The tempting alternative — checking whether
+    a group's name appears in the entity id — mis-targets badly: a group called
+    "Bath" would match `light.bathroom_ceiling`, and a service aimed at one room
+    would quietly act on another.
+
     With no target at all the call applies to every group, which is the useful
     default for `apply_now` and `resume`.
     """
     groups = coordinator.groups
     group_id = call.data.get("group_id")
     if group_id:
-        return [groups[group_id]] if group_id in groups else []
+        if group_id not in groups:
+            _LOGGER.warning("no such Lightcurve group %r", group_id)
+            return []
+        return [groups[group_id]]
 
     area_id = call.data.get("area_id")
     if area_id:
         return [g for g in groups.values() if g.area_id == area_id]
 
     entity_ids = call.data.get("entity_id") or []
-    if entity_ids:
-        wanted = set(entity_ids)
-        matched = []
-        for group in groups.values():
-            # Either the wrapper light itself, or one of the member bulbs.
-            unique = f"{DOMAIN}_{group.id}_light"
-            members = set(coordinator.members(group))
-            if members & wanted or any(unique in entity for entity in wanted):
-                matched.append(group)
-        if matched:
-            return matched
-        # Fall back to matching on the group name appearing in the entity id, which
-        # covers the common `light.<group>_curve` spelling.
-        return [
-            group
-            for group in groups.values()
-            if any(group.id in entity or group.name.lower().replace(" ", "_") in entity
-                   for entity in wanted)
-        ]
+    if not entity_ids:
+        return list(groups.values())
 
-    return list(groups.values())
+    wanted = set(entity_ids)
+    registry = er.async_get(coordinator.hass)
+    owned: set[str] = set()
+    for entity_id in wanted:
+        entry = registry.async_get(entity_id)
+        if entry is None or entry.platform != DOMAIN:
+            continue
+        for group in groups.values():
+            # The trailing underscore matters: it stops group "g_bath" claiming an
+            # entity belonging to "g_bathroom".
+            if entry.unique_id.startswith(f"{DOMAIN}_{group.id}_"):
+                owned.add(group.id)
+
+    matched = [
+        group
+        for group in groups.values()
+        if group.id in owned or set(coordinator.members(group)) & wanted
+    ]
+    if not matched:
+        _LOGGER.warning(
+            "no Lightcurve group owns or contains %s", ", ".join(sorted(wanted))
+        )
+    return matched
 
 
 def async_register_services(

@@ -85,12 +85,12 @@ class LightcurveGroupLight(LightcurveEntity, LightEntity):
 
     @property
     def min_color_temp_kelvin(self) -> int:
-        low, _ = self.coordinator._kelvin_range(self.group)
+        low, _ = self.coordinator.kelvin_range(self.group)
         return low or FALLBACK_MIN_KELVIN
 
     @property
     def max_color_temp_kelvin(self) -> int:
-        _, high = self.coordinator._kelvin_range(self.group)
+        _, high = self.coordinator.kelvin_range(self.group)
         return high or FALLBACK_MAX_KELVIN
 
     # --- state -----------------------------------------------------------------
