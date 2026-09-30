@@ -1,0 +1,58 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Choose the rooms to drive",
+        "description": "Lightcurve found {count} area(s) containing lights. Pick the ones it should drive; each becomes a group with its own wrapper light. Members are taken from the area, so a bulb you add later joins on its own.",
+        "data": {
+          "areas": "Areas"
+        }
+      },
+      "conflict": {
+        "title": "Another integration is already adapting these lights",
+        "description": "Adaptive Lighting is managing some of the bulbs you selected: {entities}.\n\nTwo integrations writing to the same bulb will fight. Lightcurve treats any change it did not make as a manual override, so every Adaptive Lighting update would stop the curve within about 90 seconds of a light coming on.\n\nDisable Adaptive Lighting for these lights before relying on Lightcurve. Submit to continue anyway."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Lightcurve is already set up.",
+      "no_areas_with_lights": "No Home Assistant area contains any lights. Assign your bulbs to areas under Settings > Devices, then try again."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Lightcurve settings",
+        "description": "These defaults were measured against Tapo L630 bulbs. The thresholds are deliberately small: these bulbs ignore transitions, so smoothness comes from frequent tiny steps, and a large threshold would hold the light still and then jump.",
+        "data": {
+          "tick_seconds": "Seconds between updates",
+          "kelvin_threshold": "Smallest colour change worth sending (K)",
+          "brightness_threshold_pct": "Smallest brightness change worth sending (%)",
+          "min_command_interval_seconds": "Minimum seconds between commands to one bulb",
+          "kelvin_tolerance": "Colour difference that counts as a manual override (K)",
+          "brightness_tolerance_pct": "Brightness difference that counts as a manual override (%)",
+          "default_transition_seconds": "Transition time (0 for bulbs that ignore it)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "switch": {
+      "enabled": { "name": "Curve enabled" }
+    },
+    "sensor": {
+      "target": { "name": "Curve target" }
+    },
+    "binary_sensor": {
+      "override": { "name": "Curve overridden" }
+    },
+    "select": {
+      "profile": { "name": "Profile" }
+    }
+  },
+  "services": {
+    "apply_now": { "name": "Apply now", "description": "Recompute and push the curve immediately." },
+    "resume": { "name": "Resume", "description": "Clear overrides and return to the curve." },
+    "pause": { "name": "Pause", "description": "Hold one or both channels so manual values stick." },
+    "set_profile": { "name": "Set profile", "description": "Point groups at a different profile." }
+  }
+}

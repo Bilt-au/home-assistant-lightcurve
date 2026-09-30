@@ -1,0 +1,128 @@
+# Lightcurve
+
+A Home Assistant integration that drives your lights along a 24-hour curve of colour
+and brightness — and applies the right colour **in the same command that turns the
+light on**, so you never see a flash of last night's setting.
+
+It also supports genuine colours in the curve, not just white temperatures, so a
+"dim red between 20:00 and 04:00" night section is a normal thing to ask for rather
+than a workaround.
+
+> **Status: Phase 1.** The integration works and is tested, but profiles are edited
+> in code rather than in a graphical editor. The editor is Phase 2.
+
+## Requirements
+
+- Home Assistant 2026.9 or newer
+- Bulbs already set up in Home Assistant and assigned to **areas**
+- **No other adaptive lighting integration managing the same bulbs** — see below
+
+## Installing
+
+Add this repository to HACS as a custom repository:
+
+1. HACS → three-dot menu → **Custom repositories**
+2. URL: this repository, category: **Integration**
+3. Find **Lightcurve** in HACS and install it
+4. Restart Home Assistant
+5. **Settings → Devices & Services → Add Integration → Lightcurve**
+
+Setup asks which areas to drive. Each area becomes a group with its own wrapper
+light. Membership is taken from the area, so a bulb you add to that room later joins
+on its own with no reconfiguration.
+
+## What you get, per group
+
+| Entity | What it does |
+|---|---|
+| `light.<group>` | The light you actually control. Expose **this** to HomeKit, not the bulbs |
+| `switch.<group>_curve_enabled` | Turn the curve off without losing the configuration; the light then behaves like a plain group |
+| `select.<group>_profile` | Which profile drives the group — usable from a dashboard, an automation or a voice assistant |
+| `sensor.<group>_curve_target` | The target colour temperature right now, with the full target in attributes |
+| `binary_sensor.<group>_curve_overridden` | On while the group has stopped following the curve |
+
+### How it behaves
+
+- **Turn it on** → comes up at the curve's colour and brightness, in one command.
+- **Set it to 40 %** → holds that brightness, but colour keeps following the curve.
+- **Make it blue** → holds that colour, but brightness keeps following the curve.
+- **Turn it off and on again** → back on the curve.
+
+Those per-channel overrides are what make voice control pleasant: dimming the lights
+does not also freeze their colour for the rest of the evening.
+
+## Services
+
+| Service | What it does |
+|---|---|
+| `lightcurve.apply_now` | Recompute and push the curve immediately |
+| `lightcurve.resume` | Clear overrides and return to the curve |
+| `lightcurve.pause` | Hold one or both channels so manual values stick |
+| `lightcurve.set_profile` | Point groups at a different profile |
+
+All of them accept a group, a wrapper light, or an area. With no target at all,
+`apply_now` and `resume` apply to every group.
+
+## Important: only one integration may adapt a bulb
+
+If Adaptive Lighting — or anything similar — is managing the same bulbs, the two will
+fight. Lightcurve treats any change it did not make as a manual override, so every
+Adaptive Lighting update stops the curve within about 90 seconds of a light coming
+on. The symptom is "it worked for a minute and then stopped".
+
+Setup checks for this and warns you, but it cannot fix it. Disable the other
+integration for those lights.
+
+## The default profile
+
+A warm, dim night; a moderate day; red at night.
+
+| Time | Colour | Brightness |
+|---|---|---|
+| 04:00 | red | 3 % |
+| 04:15 | 2200 K | 5 % |
+| 08:00 | 2700 K | 40 % |
+| solar noon | 4000 K | 70 % |
+| 19:45 | 2200 K | 5 % |
+| 20:00 | red | 3 % |
+
+The keyframes at 19:45 and 04:15 are doing real work. A segment renders as a colour
+if *either* end is a colour, so without them the stretch from morning to 20:00 would
+be driven through the RGB LEDs all day, leaving the dedicated white LED unused —
+dimmer and less pure for no benefit. The shoulders keep hs mode to fifteen minutes
+either side of the night, and put the mode switch where brightness is lowest and it
+is least noticeable.
+
+## Notes on Tapo L630 bulbs
+
+Measured, not assumed. Full detail in `docs/spec.md` Appendix C.
+
+- **Transitions do not work.** The bulb advertises the feature and ignores it. So
+  Lightcurve does not send one, and gets smoothness from small frequent steps
+  instead — about 7 K and 0.1 % per minute on the steepest part of a daily curve.
+  This is why the thresholds are deliberately tiny; raising them makes the light hold
+  still and then visibly jump.
+- **Reported state is exact.** No rounding at all across the full range, which is why
+  override detection can use tight tolerances.
+- **Dim saturated red works** down to 1 %, so a dim red night section is viable.
+- **A cold turn-on briefly shows the bulb's previous state** for about one command
+  round trip (~600 ms) before the new values land. Lightcurve keeps each bulb at the
+  curve target while it is on, so what a light comes back to is whatever the curve
+  last set — the difference is small unless the light has been off for many hours.
+
+## Development
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+pytest          # 90 tests
+ruff check custom_components/ tests/
+```
+
+`custom_components/lightcurve/engine.py` is pure Python with no Home Assistant
+imports, so the curve maths can be tested on its own — that is where most of the test
+suite lives.
+
+`spike/` holds the throwaway tooling used to measure the bulbs before any of this was
+written. `spike/README.md` explains what each probe decides. If you are porting this
+to different hardware, start there — and run `probe.py interference` first.

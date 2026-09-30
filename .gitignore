@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+# Contains a Home Assistant long-lived access token
+spike/.env
+spike/results/*.json
+node_modules/
+dist/
+.DS_Store

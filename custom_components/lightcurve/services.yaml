@@ -1,0 +1,108 @@
+apply_now:
+  name: Apply now
+  description: >-
+    Recompute the curve and push it to the lights immediately, ignoring the
+    perceptibility thresholds. With no target, applies to every group.
+  fields:
+    group_id:
+      name: Group
+      description: A Lightcurve group id.
+      example: g_toilet
+      selector:
+        text:
+    entity_id:
+      name: Entity
+      description: A wrapper light, or any member bulb.
+      selector:
+        entity:
+          domain: light
+          multiple: true
+    area_id:
+      name: Area
+      description: Every group bound to this area.
+      selector:
+        area:
+
+resume:
+  name: Resume
+  description: >-
+    Clear any override and put the lights back on the curve. With no target,
+    resumes every group.
+  fields:
+    group_id:
+      name: Group
+      selector:
+        text:
+    entity_id:
+      name: Entity
+      selector:
+        entity:
+          domain: light
+          multiple: true
+    area_id:
+      name: Area
+      selector:
+        area:
+
+pause:
+  name: Pause
+  description: >-
+    Stop following the curve on one or both channels, so manual values stick.
+  fields:
+    group_id:
+      name: Group
+      selector:
+        text:
+    entity_id:
+      name: Entity
+      selector:
+        entity:
+          domain: light
+          multiple: true
+    area_id:
+      name: Area
+      selector:
+        area:
+    channels:
+      name: Channels
+      description: Which channels to hold. Defaults to both.
+      selector:
+        select:
+          multiple: true
+          options:
+            - colour
+            - brightness
+    duration_minutes:
+      name: Duration
+      description: Clear the pause after this many minutes. Omit to hold until off/on.
+      selector:
+        number:
+          min: 1
+          max: 1440
+          unit_of_measurement: min
+
+set_profile:
+  name: Set profile
+  description: Point one or more groups at a different profile.
+  fields:
+    profile_id:
+      name: Profile
+      description: The profile id to switch to.
+      required: true
+      example: p_default
+      selector:
+        text:
+    group_id:
+      name: Group
+      selector:
+        text:
+    entity_id:
+      name: Entity
+      selector:
+        entity:
+          domain: light
+          multiple: true
+    area_id:
+      name: Area
+      selector:
+        area:

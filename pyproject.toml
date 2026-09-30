@@ -1,0 +1,17 @@
+[tool.pytest.ini_options]
+# pytest-homeassistant-custom-component's fixtures are async generators, so the
+# auto asyncio mode is not optional — without it every fixture arrives unresolved.
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+norecursedirs = ["spike", ".venv"]
+filterwarnings = [
+    "ignore::DeprecationWarning:homeassistant.*",
+]
+
+[tool.ruff]
+line-length = 90
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]

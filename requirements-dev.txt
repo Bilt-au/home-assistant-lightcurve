@@ -1,0 +1,4 @@
+# Pinned to whatever Home Assistant version this harness targets; see docs/spec.md
+# Appendix C for the caveat about testing against an older HA than production runs.
+pytest-homeassistant-custom-component
+ruff
