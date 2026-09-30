@@ -1,5 +1,8 @@
 # Lightcurve
 
+[![Validate](https://github.com/m4tD3v/lightcurve/actions/workflows/validate.yml/badge.svg)](https://github.com/m4tD3v/lightcurve/actions/workflows/validate.yml)
+[![hacs](https://img.shields.io/badge/HACS-custom-41BDF5.svg)](https://hacs.xyz)
+
 A Home Assistant integration that drives your lights along a 24-hour curve of colour
 and brightness — and applies the right colour **in the same command that turns the
 light on**, so you never see a flash of last night's setting.
@@ -22,7 +25,7 @@ than a workaround.
 Add this repository to HACS as a custom repository:
 
 1. HACS → three-dot menu → **Custom repositories**
-2. URL: this repository, category: **Integration**
+2. URL: `https://github.com/m4tD3v/lightcurve`, category: **Integration**
 3. Find **Lightcurve** in HACS and install it
 4. Restart Home Assistant
 5. **Settings → Devices & Services → Add Integration → Lightcurve**
@@ -134,3 +137,27 @@ suite lives.
 `spike/` holds the throwaway tooling used to measure the bulbs before any of this was
 written. `spike/README.md` explains what each probe decides. If you are porting this
 to different hardware, start there — and run `probe.py interference` first.
+
+## Why another circadian lighting integration
+
+[Adaptive Lighting](https://github.com/basnijholt/adaptive-lighting) is excellent and
+solves most of this problem. Lightcurve exists for four things it does not do:
+
+- **The colour arrives with the "on".** Adaptive Lighting corrects a light shortly
+  after it comes on, so you see the old colour first. Lightcurve creates a wrapper
+  light and puts the curve's colour and brightness in the same command that turns the
+  bulb on, so there is nothing to correct.
+- **Real colours, not just white temperatures.** A dim red section from 20:00 to 04:00
+  is an ordinary keyframe, not a workaround.
+- **A curve you draw, not min/max parameters.** Keyframes with easing, rather than
+  tuning endpoints and inferring the middle. (The graphical editor is Phase 2; for now
+  profiles are defined in code.)
+- **Deliberate power-restore behaviour**, because load-shedding is a fact of life where
+  this was written and bulbs come back at whatever state they please.
+
+If none of those matter to you, use Adaptive Lighting — and do not run both on the
+same bulbs.
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).
