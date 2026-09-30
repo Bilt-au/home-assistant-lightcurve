@@ -1,7 +1,6 @@
 # Lightcurve — Custom Circadian Lighting Integration for Home Assistant
 
 **Status:** Draft v0.1
-**Owner:** Matt
 **Domain:** `lightcurve`
 **Date:** 30 September 2026
 
@@ -14,7 +13,7 @@ Lightcurve is a Home Assistant custom integration that drives smart lights along
 - applies the correct colour **in the same command that turns a light on** (no flash of the old colour), via wrapper light entities;
 - lets the user draw the curve on a **graphical editor** with keyframes, rather than tuning min/max parameters;
 - supports **custom RGB colours** in the curve, not just white temperature;
-- handles **power-restore events** (load-shedding) deliberately.
+- handles **power-restore events** deliberately.
 
 ## 2. Goals and non-goals
 
@@ -38,10 +37,10 @@ Lightcurve is a Home Assistant custom integration that drives smart lights along
 |---|---|
 | Bulbs | TP-Link Tapo L630 GU10, Wi-Fi, 2200–6500 K, RGB, 350 lm, local control via HA TP-Link Smart Home integration |
 | Hub | Home Assistant (current 2026 release) |
-| Voice | Siri via HA HomeKit Bridge, HomePod mini as home hub |
-| Wall control | Sonoff Matter switch, relay to be left permanently on (detached mode) |
-| Location | Durban, SA — sun times from HA configured location |
-| Power | Load-shedding possible; bulbs power up at their default/last state when mains returns |
+| Voice | Siri via HA HomeKit Bridge |
+| Wall control | Matter switch with the relay left permanently on (detached mode) |
+| Location | Sun times come from HA's configured location; the reference install is in the southern hemisphere with no DST |
+| Power | Mains interruptions are expected; bulbs power up at their default or last state when power returns |
 
 **Known Tapo behaviours to design around**
 - Command latency ~300–800 ms; occasional timeouts.
@@ -249,7 +248,7 @@ All commands Lightcurve issues use a `Context` it creates and records, so overri
   - `apply_curve`: if on, apply the current target with `transition: 0`.
   - `turn_off`: if on, turn it off. Useful if power returns at 02:00 and you don't want every light blazing.
   - `restore_previous`: set it to the state it was in before the outage (off if it was off).
-- A debounce (default 10 s) handles bulbs reconnecting in waves after a grid restore.
+- A debounce (default 10 s) handles bulbs reconnecting in waves after power returns.
 
 ## 12. Services
 

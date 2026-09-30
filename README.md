@@ -152,8 +152,8 @@ solves most of this problem. Lightcurve exists for four things it does not do:
 - **A curve you draw, not min/max parameters.** Keyframes with easing, rather than
   tuning endpoints and inferring the middle. (The graphical editor is Phase 2; for now
   profiles are defined in code.)
-- **Deliberate power-restore behaviour**, because load-shedding is a fact of life where
-  this was written and bulbs come back at whatever state they please.
+- **Deliberate power-restore behaviour**, because mains interruptions are a fact of
+  life where this was written and bulbs come back at whatever state they please.
 
 If none of those matter to you, use Adaptive Lighting — and do not run both on the
 same bulbs.
