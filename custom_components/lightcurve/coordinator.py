@@ -380,8 +380,15 @@ class LightcurveCoordinator:
 
     # --- themes -----------------------------------------------------------------
 
-    async def async_apply_theme(self, theme: Theme) -> list[str]:
-        """Put every group a theme covers into that theme.
+    async def async_apply_theme(
+        self, theme: Theme, only_groups: list[str] | None = None
+    ) -> list[str]:
+        """Put the groups a theme covers into that theme.
+
+        `only_groups` narrows it to part of its usual reach, so a theme covering the
+        whole house can be sent to one room without needing a duplicate theme per
+        room. Rooms the theme does not cover are still ignored: narrowing is a
+        restriction, never a way to reach somewhere the theme was not meant for.
 
         Applying sets both channel overrides, which is the whole mechanism: without
         them the next tick would put the curve straight back. Switching the room off
@@ -392,6 +399,8 @@ class LightcurveCoordinator:
         """
         applied: list[str] = []
         targets = theme.groups or list(self.groups)
+        if only_groups is not None:
+            targets = [group_id for group_id in targets if group_id in only_groups]
         for group_id in targets:
             try:
                 group = self.store.group(group_id)

@@ -519,3 +519,114 @@ async def test_deleting_a_theme_releases_the_lights_it_was_holding(hass, ws):
 
     listed = await call(ws, {"type": "lightcurve/themes/list"})
     assert "Mood" not in {t["name"] for t in listed["result"]["themes"]}
+
+
+async def test_a_room_can_be_pointed_at_a_different_curve(hass, ws):
+    """The bathroom wanting a different day from the lounge is the ordinary case."""
+    await call(
+        ws,
+        {
+            "type": "lightcurve/profiles/save",
+            "profile": {
+                "id": "p_dim",
+                "name": "Dim",
+                "variants": {
+                    "default": {
+                        "keyframes": [
+                            {
+                                "id": "a",
+                                "time": {"type": "fixed", "value": "07:00"},
+                                "colour": {"mode": "kelvin", "kelvin": 2200},
+                                "brightness": 10,
+                                "easing": "linear",
+                            },
+                            {
+                                "id": "b",
+                                "time": {"type": "fixed", "value": "21:00"},
+                                "colour": {"mode": "kelvin", "kelvin": 2200},
+                                "brightness": 5,
+                                "easing": "linear",
+                            },
+                        ]
+                    }
+                },
+            },
+        },
+    )
+    reply = await call(
+        ws,
+        {
+            "type": "lightcurve/groups/set_profile",
+            "group_id": "g_toilet",
+            "profile_id": "p_dim",
+        },
+    )
+    assert reply["success"], reply.get("error")
+    assert reply["result"]["group"]["profile_id"] == "p_dim"
+
+
+async def test_changing_a_rooms_curve_keeps_its_other_settings(hass, ws):
+    """Round-tripping a whole group to change one field is how power_restore and the
+    override timeout get silently reset."""
+    coordinator = next(iter(hass.data["lightcurve"].values()))
+    group = coordinator.store.group("g_toilet")
+    group.power_restore = "turn_off"
+    group.override_timeout_minutes = 120
+    await coordinator.store.async_put_group(group)
+
+    await call(
+        ws,
+        {
+            "type": "lightcurve/profiles/save",
+            "profile": {
+                "id": "p_other",
+                "name": "Other",
+                "variants": {
+                    "default": {
+                        "keyframes": [
+                            {
+                                "id": "a",
+                                "time": {"type": "fixed", "value": "07:00"},
+                                "colour": {"mode": "kelvin", "kelvin": 2700},
+                                "brightness": 40,
+                                "easing": "linear",
+                            },
+                            {
+                                "id": "b",
+                                "time": {"type": "fixed", "value": "21:00"},
+                                "colour": {"mode": "kelvin", "kelvin": 2200},
+                                "brightness": 10,
+                                "easing": "linear",
+                            },
+                        ]
+                    }
+                },
+            },
+        },
+    )
+    await call(
+        ws,
+        {
+            "type": "lightcurve/groups/set_profile",
+            "group_id": "g_toilet",
+            "profile_id": "p_other",
+        },
+    )
+
+    after = coordinator.store.group("g_toilet")
+    assert after.profile_id == "p_other"
+    assert after.power_restore == "turn_off"
+    assert after.override_timeout_minutes == 120
+
+
+async def test_pointing_a_room_at_an_unknown_profile_is_refused(ws):
+    reply = await call(
+        ws,
+        {
+            "type": "lightcurve/groups/set_profile",
+            "group_id": "g_toilet",
+            "profile_id": "p_nope",
+        },
+    )
+    assert not reply["success"]
+    assert reply["error"]["code"] == "not_found"

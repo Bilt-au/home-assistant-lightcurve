@@ -52,6 +52,8 @@ export class LightcurvePanel extends LitElement {
   @state() private groups: Group[] = [];
   @state() private themes: Theme[] = [];
   @state() private editingTheme: Theme | null = null;
+  /** Which rooms a theme press should reach. Empty means whatever it covers. */
+  @state() private themeTarget: string[] = [];
   @state() private profile: Profile | null = null;
   @state() private variant = "default";
   @state() private samples: Sample[] = [];
@@ -166,6 +168,12 @@ export class LightcurvePanel extends LitElement {
       margin: 0 0 12px;
     }
     .themes-head h2 { margin-right: auto; }
+    .inline-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--secondary-text-color, #666);
+    }
     .themes-head h2 {
       margin: 0;
       font-size: 15px;
@@ -537,7 +545,11 @@ export class LightcurvePanel extends LitElement {
   private async applyTheme(theme: Theme): Promise<void> {
     this.error = null;
     try {
-      await this.send({ type: "lightcurve/themes/apply", theme_id: theme.id });
+      await this.send({
+        type: "lightcurve/themes/apply",
+        theme_id: theme.id,
+        ...(this.themeTarget.length > 0 ? { group_ids: this.themeTarget } : {}),
+      });
     } catch (err) {
       // A theme can legitimately reach nothing — an effect the bulbs lack, or a room
       // that is unavailable. Saying so beats a button that appears to do nothing.
@@ -554,6 +566,111 @@ export class LightcurvePanel extends LitElement {
       this.error = describeError(err);
     }
     await this.refreshThemes();
+  }
+
+  /** Create a profile, starting from the one on screen.
+   *
+   *  Copying beats starting blank: a new profile almost always wants to be "the
+   *  everyday one, but dimmer", and rebuilding a day's curve from two keyframes is
+   *  a chore nobody asked for.
+   */
+  private async newProfile(copyCurrent: boolean): Promise<void> {
+    const name = prompt(
+      copyCurrent ? "Name for the copy" : "Name for the new profile"
+    );
+    if (!name) return;
+    const id = `p_${name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`.slice(0, 40);
+    const variants =
+      copyCurrent && this.profile
+        ? JSON.parse(JSON.stringify(this.profile.variants))
+        : {
+            default: {
+              keyframes: [
+                {
+                  id: "k_morning",
+                  time: { type: "fixed", value: "07:00" },
+                  colour: { mode: "kelvin", kelvin: 2700 },
+                  brightness: 40,
+                  easing: "ease_in_out",
+                },
+                {
+                  id: "k_evening",
+                  time: { type: "fixed", value: "21:00" },
+                  colour: { mode: "kelvin", kelvin: 2200 },
+                  brightness: 10,
+                  easing: "ease_in_out",
+                },
+              ],
+            },
+          };
+    try {
+      await this.send({
+        type: "lightcurve/profiles/save",
+        profile: { id, name, variants },
+      });
+      await this.reloadProfiles();
+      await this.openProfile(id);
+    } catch (err) {
+      this.error = describeError(err);
+    }
+  }
+
+  private async renameProfile(): Promise<void> {
+    if (!this.profile) return;
+    const name = prompt("Rename profile", this.profile.name);
+    if (!name) return;
+    this.profile = { ...this.profile, name };
+    await this.save();
+    await this.reloadProfiles();
+  }
+
+  private async deleteProfile(): Promise<void> {
+    if (!this.profile) return;
+    try {
+      await this.send({
+        type: "lightcurve/profiles/delete",
+        profile_id: this.profile.id,
+      });
+      await this.reloadProfiles();
+      if (this.profiles.length > 0) await this.openProfile(this.profiles[0].id);
+    } catch (err) {
+      // Deleting one still in use is refused by the store, which is the right
+      // answer — a room pointing at nothing has no curve to follow.
+      this.error = describeError(err);
+    }
+  }
+
+  private async reloadProfiles(): Promise<void> {
+    const reply = await this.send<{ profiles: ProfileSummary[] }>({
+      type: "lightcurve/profiles/list",
+    });
+    this.profiles = reply.profiles;
+  }
+
+  private async reloadGroups(): Promise<void> {
+    const reply = await this.send<{ groups: Group[] }>({
+      type: "lightcurve/groups/list",
+    });
+    this.groups = reply.groups;
+  }
+
+  /** Point one room at a different profile, so the bathroom need not follow the
+   *  lounge. */
+  private async assignProfile(group: Group, profileId: string): Promise<void> {
+    this.error = null;
+    try {
+      // A narrow command rather than saving the whole group back: the panel does
+      // not hold power_restore, the sleep values or the override timeout, and
+      // round-tripping a partial group would quietly reset them.
+      await this.send({
+        type: "lightcurve/groups/set_profile",
+        group_id: group.id,
+        profile_id: profileId,
+      });
+      await Promise.all([this.reloadGroups(), this.reloadProfiles()]);
+    } catch (err) {
+      this.error = describeError(err);
+    }
   }
 
   private editTheme(theme: Theme | null): void {
@@ -690,6 +807,25 @@ export class LightcurvePanel extends LitElement {
             )}
           </select>
         </div>
+        <button class="secondary small" @click=${() => void this.newProfile(true)}>
+          Duplicate
+        </button>
+        <button class="secondary small" @click=${() => void this.newProfile(false)}>
+          New profile
+        </button>
+        <button class="secondary small" @click=${() => void this.renameProfile()}>
+          Rename
+        </button>
+        <button
+          class="secondary small"
+          ?disabled=${this.profiles.length <= 1}
+          title=${this.profiles.length <= 1
+            ? "The last profile cannot be deleted"
+            : "Delete this profile"}
+          @click=${() => void this.deleteProfile()}
+        >
+          Delete profile
+        </button>
         <div class="grow"></div>
         <button class="secondary" @click=${this.addKeyframe}>Add keyframe</button>
         <button class="secondary" ?disabled=${!this.dirty} @click=${() => void this.revert()}>
@@ -728,6 +864,8 @@ export class LightcurvePanel extends LitElement {
         </p>
       </div>
 
+      ${this.renderRooms()}
+
       ${this.renderKeyframeTable()}
 
       ${this.renderThemes()}
@@ -754,6 +892,27 @@ export class LightcurvePanel extends LitElement {
       <div class="card">
         <div class="themes-head">
           <h2>Themes</h2>
+          <label class="inline-label" for="theme-target">Apply to</label>
+          <select
+            id="theme-target"
+            class="cell"
+            @change=${(e: Event) => {
+              const value = (e.target as HTMLSelectElement).value;
+              this.themeTarget = value === "" ? [] : [value];
+            }}
+          >
+            <option value="" ?selected=${this.themeTarget.length === 0}>
+              rooms each theme covers
+            </option>
+            ${this.groups.map(
+              (group) => html`<option
+                value=${group.id}
+                ?selected=${this.themeTarget[0] === group.id}
+              >
+                ${group.name} only
+              </option>`
+            )}
+          </select>
           <button class="secondary small" @click=${() => this.editTheme(null)}>
             New theme
           </button>
@@ -949,6 +1108,77 @@ export class LightcurvePanel extends LitElement {
    *  Dragging is good for shape and hopeless for "make this exactly 06:30". Both
    *  views edit the same profile, so a change here redraws the graph and vice versa.
    */
+  /** Which curve each room follows.
+   *
+   *  Groups already carried their own profile, but nothing exposed it, so every room
+   *  was stuck on whichever profile it was created with. The bathroom wanting a
+   *  different day from the lounge is the ordinary case, not an advanced one.
+   */
+  private renderRooms(): TemplateResult {
+    if (this.groups.length === 0) return html`${nothing}`;
+    return html`
+      <div class="card">
+        <div class="themes-head">
+          <h2>Rooms</h2>
+          <span class="hint">
+            Add or remove rooms in Settings → Devices &amp; Services → Lightcurve →
+            Configure
+          </span>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>Room</th><th>Curve</th><th>Lights</th><th>State</th></tr>
+            </thead>
+            <tbody>
+              ${this.groups.map(
+                (group) => html`
+                  <tr>
+                    <td>${group.name}</td>
+                    <td>
+                      <select
+                        class="cell"
+                        @change=${(e: Event) =>
+                          void this.assignProfile(
+                            group,
+                            (e.target as HTMLSelectElement).value
+                          )}
+                      >
+                        ${this.profiles.map(
+                          (profile) => html`<option
+                            value=${profile.id}
+                            ?selected=${profile.id === group.profile_id}
+                          >
+                            ${profile.name}
+                          </option>`
+                        )}
+                      </select>
+                    </td>
+                    <td class="muted">
+                      ${group.members_available.length}${group.members_available.length !==
+                      group.members_resolved.length
+                        ? ` of ${group.members_resolved.length}`
+                        : ""}
+                    </td>
+                    <td class="muted">
+                      ${!group.enabled
+                        ? "curve off"
+                        : group.override_colour || group.override_brightness
+                          ? "held"
+                          : group.is_on
+                            ? "following"
+                            : "off"}
+                    </td>
+                  </tr>
+                `
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
   private renderKeyframeTable(): TemplateResult {
     const byId = new Map(this.resolved.map((r) => [r.id, r]));
     const rows = [...this.keyframes].sort(

@@ -36,6 +36,7 @@ def async_register(hass: HomeAssistant) -> None:
         groups_list,
         groups_save,
         groups_delete,
+        groups_set_profile,
         themes_list,
         themes_apply,
         themes_release,
@@ -47,6 +48,16 @@ def async_register(hass: HomeAssistant) -> None:
         preview_stop,
     ):
         websocket_api.async_register_command(hass, handler)
+
+
+def _signal_themes_changed(hass: HomeAssistant) -> None:
+    """Scenes follow themes, so they have to appear and disappear with them rather
+    than only at a restart."""
+    from homeassistant.helpers.dispatcher import async_dispatcher_send
+
+    from .scene import SIGNAL_THEMES_CHANGED
+
+    async_dispatcher_send(hass, SIGNAL_THEMES_CHANGED)
 
 
 def _coordinator(hass: HomeAssistant) -> LightcurveCoordinator | None:
@@ -281,6 +292,42 @@ async def groups_save(hass, connection, msg, coordinator) -> None:
 
 @websocket_api.require_admin
 @websocket_api.websocket_command(
+    {
+        vol.Required("type"): "lightcurve/groups/set_profile",
+        vol.Required("group_id"): str,
+        vol.Required("profile_id"): str,
+    }
+)
+@websocket_api.async_response
+@_with_coordinator
+async def groups_set_profile(hass, connection, msg, coordinator) -> None:
+    """Point one room at a different curve.
+
+    Narrow on purpose. Round-tripping a whole group through groups/save to change
+    one field invites the caller to omit the rest — power_restore, the sleep values,
+    the override timeout — and silently reset them.
+    """
+    try:
+        group = coordinator.store.group(msg["group_id"])
+    except StoreError as err:
+        connection.send_error(msg["id"], "not_found", str(err))
+        return
+    if msg["profile_id"] not in coordinator.store.profiles:
+        connection.send_error(
+            msg["id"], "not_found", f"no such profile {msg['profile_id']!r}"
+        )
+        return
+
+    group.profile_id = msg["profile_id"]
+    await coordinator.store.async_put_group(group)
+    # Switching curve should be visible now, and it invalidates any override, which
+    # was against the old curve.
+    await coordinator.async_resume(group)
+    connection.send_result(msg["id"], {"group": group.to_dict()})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command(
     {vol.Required("type"): "lightcurve/groups/delete", vol.Required("group_id"): str}
 )
 @websocket_api.async_response
@@ -324,7 +371,12 @@ async def themes_list(hass, connection, msg, coordinator) -> None:
 
 @websocket_api.require_admin
 @websocket_api.websocket_command(
-    {vol.Required("type"): "lightcurve/themes/apply", vol.Required("theme_id"): str}
+    {
+        vol.Required("type"): "lightcurve/themes/apply",
+        vol.Required("theme_id"): str,
+        # Narrows a theme to part of its usual reach for this activation only.
+        vol.Optional("group_ids"): [str],
+    }
 )
 @websocket_api.async_response
 @_with_coordinator
@@ -334,7 +386,7 @@ async def themes_apply(hass, connection, msg, coordinator) -> None:
     except StoreError as err:
         connection.send_error(msg["id"], "not_found", str(err))
         return
-    applied = await coordinator.async_apply_theme(theme)
+    applied = await coordinator.async_apply_theme(theme, msg.get("group_ids"))
     if not applied:
         # Reporting success here would leave the user tapping a button that does
         # nothing, with no clue why.
@@ -394,6 +446,7 @@ async def themes_save(hass, connection, msg, coordinator) -> None:
     except StoreError as err:
         connection.send_error(msg["id"], "invalid_theme", str(err))
         return
+    _signal_themes_changed(hass)
     connection.send_result(msg["id"], {"theme": theme.to_dict()})
 
 
@@ -411,6 +464,7 @@ async def themes_delete(hass, connection, msg, coordinator) -> None:
         if runtime.active_theme == theme_id:
             await coordinator.async_resume(coordinator.store.group(group_id))
     await coordinator.store.async_delete_theme(theme_id)
+    _signal_themes_changed(hass)
     connection.send_result(msg["id"], {})
 
 

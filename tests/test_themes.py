@@ -253,19 +253,96 @@ async def test_a_look_naming_a_missing_group_does_not_break_the_rest(
 # --------------------------------------------------------------- scene entity
 
 
-async def test_activating_the_scene_applies_the_look(hass, integration):
+async def test_activating_a_room_scene_applies_the_theme(hass, integration):
     calls = async_mock_service(hass, "light", "turn_on")
     with freeze_time(MORNING_UTC):
         await hass.services.async_call(
-            "scene", "turn_on", {"entity_id": "scene.movie"}, blocking=True
+            "scene", "turn_on", {"entity_id": "scene.movie_toilet"}, blocking=True
         )
     assert calls, "activating the scene should reach the bulbs"
     assert calls[0].data["brightness_pct"] == 5
 
 
-async def test_the_scene_is_named_exactly_the_look(hass, integration):
-    """Siri matches on the friendly name, so "Movie" must be "Movie" and not
-    "Lightcurve themes Movie"."""
-    state = hass.states.get("scene.movie")
+async def test_a_room_scene_is_named_after_the_theme_alone(hass, integration):
+    """Siri matches the friendly name and disambiguates by the accessory's room, so
+    the name has to be "Movie" with the room doing the rest. "Movie Toilet" would
+    mean saying the room twice."""
+    state = hass.states.get("scene.movie_toilet")
     assert state is not None
     assert state.attributes["friendly_name"] == "Movie"
+
+
+async def add_lounge(hass, integration, member_attributes):
+    """A second room, so per-room scenes have something to be per."""
+    from homeassistant.helpers.dispatcher import async_dispatcher_send
+
+    from custom_components.lightcurve.scene import SIGNAL_THEMES_CHANGED
+    from custom_components.lightcurve.store import Group
+
+    coordinator = hass.data["lightcurve"][integration.entry_id]
+    hass.states.async_set("light.lounge_1", "on", dict(member_attributes))
+    await coordinator.store.async_put_group(
+        Group(
+            id="g_lounge", name="Lounge", members=["light.lounge_1"],
+            profile_id=DEFAULT_PROFILE_ID,
+        )
+    )
+    async_dispatcher_send(hass, SIGNAL_THEMES_CHANGED)
+    await hass.async_block_till_done()
+    return coordinator
+
+
+async def test_there_is_a_scene_per_room_a_theme_covers(
+    hass, integration, member_attributes
+):
+    """One scene covering several rooms cannot be addressed by room however it is
+    configured, because HomeKit disambiguates by where the accessory sits."""
+    from homeassistant.helpers import entity_registry as er
+
+    from custom_components.lightcurve.const import DOMAIN
+
+    await add_lounge(hass, integration, member_attributes)
+
+    registry = er.async_get(hass)
+    scenes = {
+        e.entity_id
+        for e in registry.entities.values()
+        if e.platform == DOMAIN and e.domain == "scene"
+    }
+    assert "scene.movie_toilet" in scenes
+    assert "scene.movie_lounge" in scenes
+    # And a whole-house one, named so it cannot be confused with a room scene.
+    assert "scene.movie_everywhere" in scenes
+    assert hass.states.get("scene.movie_everywhere").attributes["friendly_name"] == (
+        "Movie everywhere"
+    )
+
+
+async def test_a_room_scene_only_touches_its_own_room(
+    hass, integration, member_attributes
+):
+    coordinator = await add_lounge(hass, integration, member_attributes)
+
+    async_mock_service(hass, "light", "turn_on")
+    with freeze_time(MORNING_UTC):
+        await hass.services.async_call(
+            "scene", "turn_on", {"entity_id": "scene.mood_lounge"}, blocking=True
+        )
+    assert coordinator.runtime("g_lounge").active_theme == "t_mood"
+    assert coordinator.runtime("g_toilet").active_theme is None, (
+        "saying it in one room must not change the others"
+    )
+
+
+async def test_the_whole_house_scene_reaches_every_room(
+    hass, integration, member_attributes
+):
+    coordinator = await add_lounge(hass, integration, member_attributes)
+
+    async_mock_service(hass, "light", "turn_on")
+    with freeze_time(MORNING_UTC):
+        await hass.services.async_call(
+            "scene", "turn_on", {"entity_id": "scene.mood_everywhere"}, blocking=True
+        )
+    assert coordinator.runtime("g_lounge").active_theme == "t_mood"
+    assert coordinator.runtime("g_toilet").active_theme == "t_mood"
