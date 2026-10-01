@@ -1577,15 +1577,9 @@ let g = class extends C {
     this.error = null;
     try {
       await this.send({
-        type: "lightcurve/groups/save",
-        group: {
-          id: e.id,
-          name: e.name,
-          profile_id: t,
-          area_id: e.area_id,
-          members: e.members,
-          enabled: e.enabled
-        }
+        type: "lightcurve/groups/set_profile",
+        group_id: e.id,
+        profile_id: t
       }), await Promise.all([this.reloadGroups(), this.reloadProfiles()]);
     } catch (i) {
       this.error = w(i);

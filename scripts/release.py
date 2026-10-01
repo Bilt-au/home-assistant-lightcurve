@@ -39,6 +39,18 @@ def main(argv: list[str]) -> int:
         print("working tree is not clean; commit or stash first")
         return 1
 
+    # The panel is committed as a built file, so it can silently fall behind its
+    # source. CI refuses a release in that state, but by then the tag is public and
+    # has to be abandoned — cheaper to catch it here.
+    subprocess.run(
+        ["npm", "run", "build"], cwd=ROOT / "frontend", check=True,
+        capture_output=True, text=True,
+    )
+    if run("git", "status", "--porcelain", "custom_components/lightcurve/frontend"):
+        print("the committed panel bundle was stale; it has been rebuilt.")
+        print("commit the rebuilt bundle, then run this again")
+        return 1
+
     manifest = json.loads(MANIFEST.read_text())
     previous = manifest["version"]
     if previous == version:
