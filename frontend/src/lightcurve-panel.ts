@@ -9,12 +9,18 @@ import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import "./curve-graph";
 import "./colour-wheel";
-import { applyMorphToKeyframes, type Lane } from "./apply-morph";
+import { applyEditToKeyframes, type Lane } from "./apply-morph";
 import type {
   Point,
 } from "./fit";
 import { formatMinute, parseMinute } from "./geometry";
-import { morphToward, radiusForWidth } from "./morph";
+import {
+  applyStroke,
+  extendStroke,
+  newStroke,
+  strokeSpan,
+  type Stroke,
+} from "./paint";
 import { hsToCss, kelvinToCss } from "./wheel";
 import type {
   Group,
@@ -62,9 +68,9 @@ export class LightcurvePanel extends LitElement {
 
   private lastScrubAt = 0;
   private resizeObserver?: ResizeObserver;
-  /** The live deformation, kept out of @state because it changes every pointer
+  /** The stroke in progress, kept out of @state because it changes every pointer
    *  move and Lit re-renders from `samples` anyway. */
-  private morphRegion: { centre: number; radius: number } | null = null;
+  private stroke: Stroke | null = null;
 
   static override styles = css`
     :host {
@@ -431,60 +437,53 @@ export class LightcurvePanel extends LitElement {
     this.selectedId = event.detail.id;
   };
 
-  /** Deform the displayed curve as the cursor moves.
+  /** Paint values straight onto the curve as the cursor sweeps.
    *
-   *  Entirely local: a server round trip per pointer move would never keep up, so
-   *  the samples are morphed in place and only converted back to keyframes on
-   *  release, when one request is enough.
+   *  Every moment the cursor passes takes the cursor's height. Entirely local while
+   *  the stroke is in progress: asking the server to re-evaluate per pointer move
+   *  would never keep up, so the samples are updated in place and converted back to
+   *  keyframes once, on release.
    */
-  private onMorph = (event: CustomEvent): void => {
-    const { lane, minute, value, plotWidth } = event.detail as {
+  private onPaint = (event: CustomEvent): void => {
+    const { lane, minute, value } = event.detail as {
       lane: Lane;
       minute: number;
       value: number;
-      plotWidth: number;
     };
-    const radius = radiusForWidth(plotWidth);
-    const bounds =
-      lane === "brightness"
-        ? { min: 1, max: 100 }
-        : lane === "warmth"
-          ? { min: 2200, max: 6500 }
-          : { min: 0, max: 360, wrapValue: true };
+    this.stroke = extendStroke(this.stroke ?? newStroke(), minute, value);
 
     const points: Point[] = this.samples.map((sample) => ({
       minute: sample.minute,
       value: laneValue(sample, lane),
     }));
-    const moved = morphToward(points, minute, value, { radiusMinutes: radius, ...bounds });
-
+    const painted = applyStroke(points, this.stroke);
     this.samples = this.samples.map((sample, index) =>
-      withLaneValue(sample, lane, moved[index].value)
+      withLaneValue(sample, lane, painted[index].value)
     );
-    this.morphRegion = { centre: minute, radius };
     this.dirty = true;
   };
 
-  /** On release, fold the drawn shape back into keyframes and re-evaluate. */
-  private onMorphCommit = (event: CustomEvent): void => {
-    if (!this.profile || !this.morphRegion) return;
+  /** On release, fold the painted span back into keyframes and re-evaluate. */
+  private onPaintCommit = (event: CustomEvent): void => {
+    const stroke = this.stroke;
+    this.stroke = null;
+    if (!this.profile || !stroke) return;
+    const span = strokeSpan(stroke);
+    if (!span) return;
+
     const lane = (event.detail as { lane: Lane }).lane;
     const points: Point[] = this.samples.map((sample) => ({
       minute: sample.minute,
       value: laneValue(sample, lane),
     }));
-    const keyframes = applyMorphToKeyframes(
-      this.keyframes,
-      this.resolved,
-      lane,
-      points,
-      this.morphRegion
-    );
+    const keyframes = applyEditToKeyframes(this.keyframes, this.resolved, lane, points, {
+      kind: "span",
+      ...span,
+    });
     this.profile = {
       ...this.profile,
       variants: { ...this.profile.variants, [this.variant]: { keyframes } },
     };
-    this.morphRegion = null;
     void this.refreshGraph();
   };
 
@@ -716,16 +715,16 @@ export class LightcurvePanel extends LitElement {
           @keyframe-move=${this.onKeyframeMove}
           @keyframe-commit=${this.onKeyframeCommit}
           @keyframe-select=${this.onSelect}
-          @curve-morph=${this.onMorph}
-          @morph-commit=${this.onMorphCommit}
+          @curve-paint=${this.onPaint}
+          @paint-commit=${this.onPaintCommit}
           @scrub=${this.onScrub}
           @scrub-end=${this.onScrubEnd}
         ></lightcurve-curve-graph>
         <p class="hint">
-          Drag anywhere on a lane to bend the curve around your cursor. Drag a
-          handle to move that keyframe, and drop it near a sun marker to make it
-          follow that event. The strip at the bottom previews a time of day on
-          ${group ? group.name : "the selected room"}.
+          Drag across a lane to draw it: every moment your cursor passes takes its
+          height. Keyframes are rebuilt from what you drew, and the ones you did not
+          paint over are left alone. The strip at the bottom previews a time of day
+          on ${group ? group.name : "the selected room"}.
         </p>
       </div>
 

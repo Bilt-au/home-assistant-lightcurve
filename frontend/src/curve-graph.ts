@@ -13,10 +13,8 @@ import { customElement, property, state } from "lit/decorators.js";
 import {
   brightnessToY,
   formatMinute,
-  hitTest,
   kelvinToY,
   minuteToX,
-  snapToSun,
   xToMinute,
   yToBrightness,
   yToKelvin,
@@ -46,8 +44,7 @@ export class CurveGraph extends LitElement {
   @property({ type: Number }) scrubMinute: number | null = null;
   @property({ type: Number }) width = 900;
 
-  @state() private dragging: { id: string; lane: Lane } | null = null;
-  @state() private morphing: Lane | null = null;
+  @state() private painting: Lane | null = null;
   @state() private scrubbing = false;
 
   static override styles = css`
@@ -116,19 +113,12 @@ export class CurveGraph extends LitElement {
       font: italic 11px var(--paper-font-body1_-_font-family, sans-serif);
       pointer-events: none;
     }
-    .handle {
-      stroke: var(--card-background-color, #fff);
+    .kf-tick {
+      stroke: var(--secondary-text-color, #999);
       stroke-width: 2;
-      cursor: grab;
+      opacity: 0.5;
     }
-    .handle.selected {
-      stroke: var(--primary-color, #03a9f4);
-      stroke-width: 3;
-    }
-    .hit {
-      fill: transparent;
-      cursor: grab;
-    }
+    .lane-bg { cursor: crosshair; }
     .scrub-bar {
       fill: var(--secondary-background-color, #eee);
       stroke: var(--divider-color, #ddd);
@@ -237,7 +227,7 @@ export class CurveGraph extends LitElement {
         ${this.renderSunMarkers(plot)}
         ${this.renderNow(plot)}
         ${this.renderScrub(plot)}
-        ${this.renderHandles(plot, lane)}
+        ${this.renderKeyframeTicks(plot, lane)}
         ${inactive
           ? svg`
             <rect class="inactive-wash" x=${plot.left} y=${plot.top}
@@ -372,49 +362,26 @@ export class CurveGraph extends LitElement {
                      y2=${plot.top + plot.height} />`;
   }
 
-  private handlesFor(plot: Plot, lane: Lane): { id: string; x: number; y: number }[] {
-    return this.keyframes
+  /** Faint ticks where the keyframes fall.
+   *
+   *  Not handles: the lane is a drawing surface, and anything that looks draggable
+   *  invites a gesture that no longer exists. These only mark where the control
+   *  points ended up, which is otherwise invisible until you read the table.
+   */
+  private renderKeyframeTicks(plot: Plot, lane: Lane): TemplateResult {
+    return svg`${this.keyframes
       .filter((keyframe) => this.keyframeInLane(lane, keyframe))
-      .map((keyframe) => ({
-        id: keyframe.id,
-        x: minuteToX(keyframe.minute, plot),
-        y: this.keyframeY(plot, lane, keyframe),
-      }));
+      .map((keyframe) => {
+        const x = minuteToX(keyframe.minute, plot);
+        return svg`<line class="kf-tick" x1=${x} y1=${plot.top + plot.height - 8}
+                         x2=${x} y2=${plot.top + plot.height} />`;
+      })}`;
   }
 
   private keyframeInLane(lane: Lane, keyframe: ResolvedKeyframe): boolean {
     if (lane === "brightness") return true;
     if (lane === "warmth") return keyframe.mode === "kelvin";
     return keyframe.mode === "hs";
-  }
-
-  private keyframeY(plot: Plot, lane: Lane, keyframe: ResolvedKeyframe): number {
-    if (lane === "brightness") return brightnessToY(keyframe.brightness_pct, plot);
-    if (lane === "warmth") {
-      return kelvinToY(keyframe.kelvin ?? this.minKelvin, plot, this.minKelvin, this.maxKelvin);
-    }
-    const hue = keyframe.hs ? keyframe.hs[0] : 0;
-    return plot.top + (1 - hue / 360) * plot.height;
-  }
-
-  private renderHandles(plot: Plot, lane: Lane): TemplateResult {
-    return svg`${this.handlesFor(plot, lane).map((handle) => {
-      const keyframe = this.keyframes.find((k) => k.id === handle.id)!;
-      const rgb =
-        keyframe.mode === "kelvin"
-          ? "var(--primary-color, #03a9f4)"
-          : `hsl(${keyframe.hs?.[0] ?? 0}, ${keyframe.hs?.[1] ?? 100}%, 55%)`;
-      return svg`
-        <g>
-          <circle class="hit" cx=${handle.x} cy=${handle.y} r="22"
-                  data-id=${handle.id} data-lane=${lane} />
-          <circle class="handle ${this.selectedId === handle.id ? "selected" : ""}"
-                  cx=${handle.x} cy=${handle.y} r="6" fill=${rgb}
-                  data-id=${handle.id} data-lane=${lane}>
-            <title>${keyframe.id} · ${formatMinute(keyframe.minute)}</title>
-          </circle>
-        </g>`;
-    })}`;
   }
 
   // --- interaction ----------------------------------------------------------
@@ -449,21 +416,8 @@ export class CurveGraph extends LitElement {
 
     const lane = this.laneAt(point.y);
     if (!lane) return;
-    const plot = this.plotFor(lane);
-
-    const hit = hitTest(point.x, point.y, this.handlesFor(plot, lane));
-    if (hit) {
-      this.dragging = { id: hit, lane };
-      this.selectedId = hit;
-      this.dispatchEvent(
-        new CustomEvent("keyframe-select", { detail: { id: hit }, bubbles: true, composed: true })
-      );
-      return;
-    }
-
-    // Anywhere else on a lane grabs the curve itself.
-    this.morphing = lane;
-    this.emitMorph(lane, point);
+    this.painting = lane;
+    this.emitPaint(lane, point);
   }
 
   private onPointerMove(event: PointerEvent): void {
@@ -472,53 +426,26 @@ export class CurveGraph extends LitElement {
       this.emitScrub(moved.x);
       return;
     }
-    if (this.morphing) {
-      this.emitMorph(this.morphing, moved);
-      return;
+    if (this.painting) {
+      // Clamp to the lane being painted rather than switching lanes mid-stroke:
+      // drifting a few pixels upward should not start rewriting a different
+      // channel halfway through a sweep.
+      this.emitPaint(this.painting, moved);
     }
-    if (!this.dragging) return;
-    const point = moved;
-    const plot = this.plotFor(this.dragging.lane);
-    const markers = Object.entries(this.sun)
-      .filter(([, info]) => info)
-      .map(([event_, info]) => ({ event: event_, minute: info!.minute }));
-    const snapped = snapToSun(xToMinute(point.x, plot), markers);
-
-    const detail: Record<string, unknown> = {
-      id: this.dragging.id,
-      minute: snapped.minute,
-      sunEvent: snapped.event,
-    };
-    if (this.dragging.lane === "brightness") {
-      detail.brightness = yToBrightness(point.y, plot);
-    } else if (this.dragging.lane === "warmth") {
-      detail.kelvin = yToKelvin(point.y, plot, this.minKelvin, this.maxKelvin);
-    } else {
-      const fraction = 1 - (point.y - plot.top) / plot.height;
-      detail.hue = Math.round(Math.min(360, Math.max(0, fraction * 360)));
-    }
-    this.dispatchEvent(
-      new CustomEvent("keyframe-move", { detail, bubbles: true, composed: true })
-    );
   }
 
   private onPointerUp(): void {
-    if (this.morphing) {
-      const lane = this.morphing;
-      this.morphing = null;
+    if (this.painting) {
+      const lane = this.painting;
+      this.painting = null;
       this.dispatchEvent(
-        new CustomEvent("morph-commit", { detail: { lane }, bubbles: true, composed: true })
+        new CustomEvent("paint-commit", { detail: { lane }, bubbles: true, composed: true })
       );
       return;
     }
     if (this.scrubbing) {
       this.scrubbing = false;
       this.dispatchEvent(new CustomEvent("scrub-end", { bubbles: true, composed: true }));
-      return;
-    }
-    if (this.dragging) {
-      this.dragging = null;
-      this.dispatchEvent(new CustomEvent("keyframe-commit", { bubbles: true, composed: true }));
     }
   }
 
@@ -539,8 +466,8 @@ export class CurveGraph extends LitElement {
   }
 
   /** Report where the cursor is, in this lane's own units. The panel owns the
-   *  sample data and does the deformation; the graph stays a view. */
-  private emitMorph(lane: Lane, point: { x: number; y: number }): void {
+   *  sample data and records the stroke; the graph stays a view. */
+  private emitPaint(lane: Lane, point: { x: number; y: number }): void {
     const plot = this.plotFor(lane);
     const minute = xToMinute(point.x, plot);
     let value: number;
@@ -553,8 +480,8 @@ export class CurveGraph extends LitElement {
       value = Math.round(Math.min(360, Math.max(0, fraction * 360)));
     }
     this.dispatchEvent(
-      new CustomEvent("curve-morph", {
-        detail: { lane, minute, value, plotWidth: plot.width },
+      new CustomEvent("curve-paint", {
+        detail: { lane, minute, value },
         bubbles: true,
         composed: true,
       })

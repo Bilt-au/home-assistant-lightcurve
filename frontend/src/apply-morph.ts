@@ -19,9 +19,25 @@ export type Lane = "brightness" | "warmth" | "colour";
 export const MAX_KEYFRAMES = 48;
 export const MIN_SEPARATION_MINUTES = 5;
 
-export interface MorphRegion {
-  centre: number;
-  radius: number;
+/** The part of the day an edit touched.
+ *
+ *  A deform is centred with a falloff; a painted stroke is a span between the first
+ *  and last minute the cursor crossed. Keyframes outside the region are never
+ *  altered either way, which is what keeps an edit local.
+ */
+export type Region =
+  | { kind: "radial"; centre: number; radius: number }
+  | { kind: "span"; from: number; to: number };
+
+export function inRegion(region: Region, minute: number): boolean {
+  if (region.kind === "radial") {
+    return circularDistance(minute, region.centre) <= region.radius;
+  }
+  // A stroke can run backwards across midnight, so the span wraps.
+  const { from, to } = region;
+  return from <= to
+    ? minute >= from && minute <= to
+    : minute >= from || minute <= to;
 }
 
 function valueAt(points: Point[], minute: number): number | null {
@@ -55,22 +71,21 @@ function formatMinute(minute: number): string {
   return `${h}:${m}`;
 }
 
-export function applyMorphToKeyframes(
+export function applyEditToKeyframes(
   keyframes: Keyframe[],
   resolved: ResolvedKeyframe[],
   lane: Lane,
   morphed: Point[],
-  region: MorphRegion,
+  region: Region,
   budget = MAX_KEYFRAMES
 ): Keyframe[] {
   const minuteOf = new Map(resolved.map((r) => [r.id, r.minute]));
-  const inRegion = (minute: number) =>
-    circularDistance(minute, region.centre) <= region.radius;
+  const within = (minute: number) => inRegion(region, minute);
 
   // 1. Existing keyframes: update those inside the region, keep their time binding.
   const updated: Keyframe[] = keyframes.map((keyframe) => {
     const minute = minuteOf.get(keyframe.id);
-    if (minute === undefined || !inRegion(minute)) return keyframe;
+    if (minute === undefined || !within(minute)) return keyframe;
     const value = valueAt(morphed, minute);
     if (value === null) return keyframe;
     const copy: Keyframe = JSON.parse(JSON.stringify(keyframe));
@@ -80,7 +95,7 @@ export function applyMorphToKeyframes(
 
   // 2. Does the drawn shape need keyframes the profile does not have? Fit only the
   //    dragged region, so an untouched part of the day never gains clutter.
-  const regionPoints = morphed.filter((p) => inRegion(p.minute));
+  const regionPoints = morphed.filter((p) => within(p.minute));
   if (regionPoints.length < 3) return updated;
 
   const tolerance = lane === "brightness" ? 2.5 : lane === "warmth" ? 90 : 8;
@@ -139,3 +154,7 @@ function nearestKeyframe(
   }
   return best;
 }
+
+
+/** Alias kept for the deform path, which reads better as a morph. */
+export const applyMorphToKeyframes = applyEditToKeyframes;

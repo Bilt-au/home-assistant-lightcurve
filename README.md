@@ -74,11 +74,17 @@ a bulb cannot be 3000 K and red simultaneously — so each lane is greyed where 
 curve is in the other mode. Two freely editable lanes would imply a state the
 hardware cannot enter.
 
-- **Drag a handle** to move a keyframe in time and value.
-- **Drop one near a sun marker** and it converts to sun-relative, so it tracks
-  sunrise rather than pinning to the clock time sunrise happens to have today.
-- **Drag anywhere else** on the graph to scrub, and the selected room's real bulbs
-  follow that time of day. Releasing returns them to the curve.
+- **Drag across a lane to draw it.** Every moment your cursor passes takes its
+  height, live. Release and the keyframes are rebuilt from what you drew; the part of
+  the day you did not paint over is left exactly as it was.
+- **A keyframe pinned to the sun stays pinned** when you paint over it. Only its value
+  changes, so it keeps tracking sunrise rather than silently becoming a fixed time and
+  drifting out of correctness over the following months.
+- **The strip beneath the lanes scrubs**, and the selected room's real bulbs follow
+  that time of day. Releasing returns them to the curve.
+- Faint ticks mark where the keyframes fell. They are not handles — the lane is a
+  drawing surface, and anything that looks draggable invites a gesture that no longer
+  exists. Use the keyframe table below for precise edits.
 - **The gradient strip** under each lane is drawn from colours the engine computed,
   not the browser's guess at what 2700 K looks like.
 

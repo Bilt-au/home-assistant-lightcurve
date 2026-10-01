@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyMorphToKeyframes } from "../src/apply-morph";
+import { applyEditToKeyframes, applyMorphToKeyframes } from "../src/apply-morph";
 import type { Keyframe, ResolvedKeyframe } from "../src/types";
 
 function kf(id: string, minute: number, brightness: number, sun?: string): Keyframe {
@@ -46,7 +46,7 @@ describe("applyMorphToKeyframes", () => {
       resolved,
       "brightness",
       morphedCurve(20, 80, 720, 180),
-      { centre: 720, radius: 180 }
+      { kind: "radial", centre: 720, radius: 180 }
     );
     const b = result.find((k) => k.id === "b")!;
     expect(b.brightness).toBeGreaterThan(70);
@@ -60,7 +60,7 @@ describe("applyMorphToKeyframes", () => {
       resolved,
       "brightness",
       morphedCurve(20, 80, 720, 180),
-      { centre: 720, radius: 180 }
+      { kind: "radial", centre: 720, radius: 180 }
     );
     expect(result.find((k) => k.id === "a")!.brightness).toBe(20);
     expect(result.find((k) => k.id === "c")!.brightness).toBe(20);
@@ -76,7 +76,7 @@ describe("applyMorphToKeyframes", () => {
       resolved,
       "brightness",
       morphedCurve(20, 80, 345, 240),
-      { centre: 345, radius: 240 }
+      { kind: "radial", centre: 345, radius: 240 }
     );
     const dawn = result.find((k) => k.id === "dawn")!;
     expect(dawn.time.type).toBe("sun");
@@ -93,7 +93,7 @@ describe("applyMorphToKeyframes", () => {
       resolved,
       "brightness",
       morphedCurve(20, 90, 720, 240),
-      { centre: 720, radius: 240 }
+      { kind: "radial", centre: 720, radius: 240 }
     );
     expect(result.length).toBeGreaterThan(2);
   });
@@ -106,7 +106,7 @@ describe("applyMorphToKeyframes", () => {
       resolved,
       "brightness",
       morphedCurve(20, 90, 720, 600),
-      { centre: 720, radius: 600 }
+      { kind: "radial", centre: 720, radius: 600 }
     );
     expect(result.length).toBeLessThanOrEqual(48);
   });
@@ -119,7 +119,7 @@ describe("applyMorphToKeyframes", () => {
       resolved,
       "brightness",
       morphedCurve(20, 90, 720, 240),
-      { centre: 720, radius: 240 }
+      { kind: "radial", centre: 720, radius: 240 }
     );
     const fixedMinutes = result
       .filter((k) => k.time.type === "fixed")
@@ -141,7 +141,7 @@ describe("applyMorphToKeyframes", () => {
       resolved,
       "warmth",
       morphedCurve(3000, 5000, 720, 180),
-      { centre: 720, radius: 180 }
+      { kind: "radial", centre: 720, radius: 180 }
     );
     const b = result.find((k) => k.id === "b")!;
     expect(b.colour.mode).toBe("kelvin");
@@ -157,8 +157,59 @@ describe("applyMorphToKeyframes", () => {
       resolved,
       "brightness",
       [{ minute: 0, value: 20 }],
-      { centre: 720, radius: 180 }
+      { kind: "radial", centre: 720, radius: 180 }
     );
     expect(result).toHaveLength(2);
+  });
+});
+
+describe("applyEditToKeyframes with a painted span", () => {
+  it("rewrites only the span that was painted", () => {
+    const keyframes = [kf("a", 0, 20), kf("b", 720, 20), kf("c", 1200, 20)];
+    const resolved = resolvedFrom(keyframes, [0, 720, 1200]);
+    // a flat 80 across the middle of the day
+    const painted = Array.from({ length: 288 }, (_, i) => ({
+      minute: i * 5,
+      value: i * 5 >= 600 && i * 5 <= 840 ? 80 : 20,
+    }));
+    const result = applyEditToKeyframes(keyframes, resolved, "brightness", painted, {
+      kind: "span",
+      from: 600,
+      to: 840,
+    });
+    expect(result.find((k) => k.id === "b")!.brightness).toBe(80);
+    expect(result.find((k) => k.id === "a")!.brightness).toBe(20);
+    expect(result.find((k) => k.id === "c")!.brightness).toBe(20);
+  });
+
+  it("keeps a sun-bound keyframe bound when painted over", () => {
+    const keyframes = [kf("dawn", 345, 20, "sunrise"), kf("noon", 720, 20)];
+    const resolved = resolvedFrom(keyframes, [345, 720]);
+    const painted = Array.from({ length: 288 }, (_, i) => ({
+      minute: i * 5,
+      value: 65,
+    }));
+    const result = applyEditToKeyframes(keyframes, resolved, "brightness", painted, {
+      kind: "span",
+      from: 300,
+      to: 400,
+    });
+    const dawn = result.find((k) => k.id === "dawn")!;
+    expect(dawn.time.type).toBe("sun");
+    expect(dawn.brightness).toBe(65);
+  });
+
+  it("covers a span that wraps across midnight", () => {
+    const keyframes = [kf("evening", 1320, 20), kf("small_hours", 120, 20), kf("day", 720, 50)];
+    const resolved = resolvedFrom(keyframes, [1320, 120, 720]);
+    const painted = Array.from({ length: 288 }, (_, i) => ({ minute: i * 5, value: 7 }));
+    const result = applyEditToKeyframes(keyframes, resolved, "brightness", painted, {
+      kind: "span",
+      from: 1300,
+      to: 140,
+    });
+    expect(result.find((k) => k.id === "evening")!.brightness).toBe(7);
+    expect(result.find((k) => k.id === "small_hours")!.brightness).toBe(7);
+    expect(result.find((k) => k.id === "day")!.brightness).toBe(50);
   });
 });
