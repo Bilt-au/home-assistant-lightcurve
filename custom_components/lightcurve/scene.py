@@ -58,11 +58,16 @@ async def async_setup_entry(
         for entry_ in list(registry.entities.values()):
             if entry_.platform != DOMAIN or entry_.domain != "scene":
                 continue
-            if entry_.unique_id not in wanted and entry_.unique_id in known:
-                # The theme, or the room it covered, has gone. Leaving the entity
-                # behind would offer a voice command that silently does nothing.
-                known.discard(entry_.unique_id)
-                registry.async_remove(entry_.entity_id)
+            if entry_.unique_id in wanted:
+                continue
+            # Any scene of ours that is no longer wanted goes, not merely the ones
+            # created in this session. Renaming looks to themes changed every
+            # unique_id, which orphaned the old entities rather than replacing them
+            # — leaving two accessories with the same name for Siri to choose
+            # between, and a voice command that silently does nothing.
+            _LOGGER.debug("removing stale theme scene %s", entry_.entity_id)
+            known.discard(entry_.unique_id)
+            registry.async_remove(entry_.entity_id)
 
     sync_scenes()
     entry.async_on_unload(

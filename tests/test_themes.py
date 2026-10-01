@@ -346,3 +346,29 @@ async def test_the_whole_house_scene_reaches_every_room(
         )
     assert coordinator.runtime("g_lounge").active_theme == "t_mood"
     assert coordinator.runtime("g_toilet").active_theme == "t_mood"
+
+
+async def test_scenes_from_an_earlier_version_are_cleaned_up(hass, integration):
+    """The looks-to-themes rename changed every unique_id, orphaning the old scene
+    entities. Two accessories with the same name is a coin toss for Siri, and the
+    dead one does nothing when chosen."""
+    from homeassistant.helpers import entity_registry as er
+    from homeassistant.helpers.dispatcher import async_dispatcher_send
+
+    from custom_components.lightcurve.const import DOMAIN
+    from custom_components.lightcurve.scene import SIGNAL_THEMES_CHANGED
+
+    registry = er.async_get(hass)
+    stale = registry.async_get_or_create(
+        "scene", DOMAIN, "lightcurve_look_l_mood", suggested_object_id="mood"
+    )
+    assert registry.async_get(stale.entity_id) is not None
+
+    async_dispatcher_send(hass, SIGNAL_THEMES_CHANGED)
+    await hass.async_block_till_done()
+
+    assert registry.async_get(stale.entity_id) is None, (
+        "an orphaned scene from an earlier version must be removed"
+    )
+    # and the current ones are untouched
+    assert hass.states.get("scene.mood_toilet") is not None
