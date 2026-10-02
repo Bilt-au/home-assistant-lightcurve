@@ -660,3 +660,55 @@ async def test_a_theme_holds_even_when_some_rooms_are_unreachable(hass, ws, memb
     assert mood["holding"] is True, "it is showing in the reachable room"
     assert mood["holding_in"] == ["Toilet"]
     assert "Dark room" in mood["covers"], "it still covers the room it could not reach"
+
+
+async def test_saving_a_profile_says_which_rooms_it_reached(hass, ws):
+    """Editing the curve and seeing nothing happen is indistinguishable from the
+    editor being broken. A held room, an unpowered room and a disabled curve all
+    look identical from the outside, so the save has to name them."""
+    from pytest_homeassistant_custom_component.common import async_mock_service
+
+    async_mock_service(hass, "light", "turn_on")
+    coordinator = next(iter(hass.data["lightcurve"].values()))
+    profile = coordinator.store.profile("p_default")
+
+    with freeze_time(MORNING_UTC):
+        reply = await call(
+            ws, {"type": "lightcurve/profiles/save", "profile": profile}
+        )
+    assert reply["success"]
+    assert reply["result"]["applied"] == ["Toilet"]
+    assert reply["result"]["held"] == []
+
+    # now hold the room with a theme and save again
+    with freeze_time(MORNING_UTC):
+        await call(ws, {"type": "lightcurve/themes/apply", "theme_id": "t_movie"})
+        reply = await call(
+            ws, {"type": "lightcurve/profiles/save", "profile": profile}
+        )
+    assert reply["result"]["applied"] == []
+    assert reply["result"]["held"] == ["Toilet"], (
+        "a room holding a theme must be reported, not silently skipped"
+    )
+
+
+async def test_an_unreachable_room_is_reported_separately_from_a_held_one(hass, ws):
+    """Different causes, different fixes: one needs the theme released, the other
+    needs the power back on."""
+    from pytest_homeassistant_custom_component.common import async_mock_service
+
+    async_mock_service(hass, "light", "turn_on")
+    coordinator = next(iter(hass.data["lightcurve"].values()))
+    for entity_id in ("light.toilet_1", "light.toilet_2"):
+        hass.states.async_set(entity_id, "unavailable", {})
+
+    with freeze_time(MORNING_UTC):
+        reply = await call(
+            ws,
+            {
+                "type": "lightcurve/profiles/save",
+                "profile": coordinator.store.profile("p_default"),
+            },
+        )
+    assert reply["result"]["unreachable"] == ["Toilet"]
+    assert reply["result"]["held"] == []

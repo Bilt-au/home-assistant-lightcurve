@@ -68,6 +68,7 @@ export class LightcurvePanel extends LitElement {
   @state() private dirty = false;
   @state() private busy = false;
   @state() private error: string | null = null;
+  @state() private notice: string | null = null;
   @state() private graphWidth = 900;
 
   private lastScrubAt = 0;
@@ -319,6 +320,28 @@ export class LightcurvePanel extends LitElement {
       text-overflow: ellipsis;
       white-space: nowrap;
       max-width: 100%;
+    }
+    .notice-banner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      background: color-mix(in srgb, var(--warning-color, #ffa600) 20%, transparent);
+      color: var(--primary-text-color, #333);
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+    button.link {
+      background: none;
+      border: none;
+      padding: 4px 8px;
+      min-height: 32px;
+      font-size: 13px;
+      text-decoration: underline;
+      cursor: pointer;
+      color: inherit;
     }
     .error-banner {
       background: var(--error-color, #d32f2f);
@@ -823,9 +846,15 @@ export class LightcurvePanel extends LitElement {
     this.busy = true;
     this.error = null;
     try {
-      await this.send({ type: "lightcurve/profiles/save", profile: this.profile });
+      const result = await this.send<{
+        applied: string[];
+        held: string[];
+        unreachable: string[];
+        disabled: string[];
+      }>({ type: "lightcurve/profiles/save", profile: this.profile });
       this.dirty = false;
-      await this.refreshGraph();
+      this.notice = describeSave(result);
+      await Promise.all([this.refreshGraph(), this.reloadGroups()]);
     } catch (err) {
       this.error = describeError(err);
     } finally {
@@ -878,6 +907,13 @@ export class LightcurvePanel extends LitElement {
     const group = this.groups.find((g) => g.id === this.previewGroupId);
     return html`
       ${this.error ? html`<div class="error-banner">${this.error}</div>` : nothing}
+      ${this.notice
+        ? html`<div class="notice-banner">
+            ${this.notice}
+            <button class="link" @click=${() => (this.notice = null)}>dismiss</button>
+          </div>`
+        : nothing}
+      ${this.renderBlockedBanner()}
       <div class="bar">
         <div>
           <label for="profile">Profile</label>
@@ -1221,6 +1257,44 @@ export class LightcurvePanel extends LitElement {
    *  was stuck on whichever profile it was created with. The bathroom wanting a
    *  different day from the lounge is the ordinary case, not an advanced one.
    */
+  /** Why the lights are not following the curve, when they are not.
+   *
+   *  A held room and an unpowered room both look like "the editor does nothing".
+   *  They have different fixes, so they are named separately and the one this panel
+   *  can fix comes with the button that fixes it.
+   */
+  private renderBlockedBanner(): TemplateResult {
+    const held = this.groups.filter(
+      (g) => g.override_colour || g.override_brightness
+    );
+    const dark = this.groups.filter(
+      (g) => g.members_resolved.length > 0 && g.members_available.length === 0
+    );
+    if (held.length === 0 && dark.length === 0) return html`${nothing}`;
+    return html`
+      <div class="notice-banner">
+        ${held.length > 0
+          ? html`<span>
+              <strong>${held.map((g) => g.name).join(", ")}</strong>
+              ${held.length === 1 ? "is" : "are"} holding a theme or a manual change,
+              so the curve is not driving ${held.length === 1 ? "it" : "them"}.
+            </span>
+            <button class="link" @click=${() => void this.releaseThemes()}>
+              Back to curve
+            </button>`
+          : nothing}
+        ${dark.length > 0
+          ? html`<span>
+              <strong>${dark.map((g) => g.name).join(", ")}</strong>
+              ${dark.length === 1 ? "has" : "have"} no reachable bulbs — usually a
+              wall switch cutting power. Nothing here can reach
+              ${dark.length === 1 ? "it" : "them"} until the power is back.
+            </span>`
+          : nothing}
+      </div>
+    `;
+  }
+
   private renderRooms(): TemplateResult {
     if (this.groups.length === 0) return html`${nothing}`;
     return html`
@@ -1671,6 +1745,37 @@ function withLaneValue(
 function nowMinute(): number {
   const now = new Date();
   return now.getHours() * 60 + now.getMinutes();
+}
+
+/** Turn a save result into one sentence about what actually happened. */
+function describeSave(result: {
+  applied: string[];
+  held: string[];
+  unreachable: string[];
+  disabled: string[];
+}): string | null {
+  const parts: string[] = [];
+  if (result.applied.length > 0) {
+    parts.push(`Applied to ${result.applied.join(", ")}.`);
+  }
+  if (result.held.length > 0) {
+    parts.push(
+      `${result.held.join(", ")} ${result.held.length === 1 ? "is" : "are"} holding` +
+        " a theme, so the new curve will not show there until released."
+    );
+  }
+  if (result.unreachable.length > 0) {
+    parts.push(
+      `${result.unreachable.join(", ")} had no reachable bulbs.`
+    );
+  }
+  if (result.disabled.length > 0) {
+    parts.push(`${result.disabled.join(", ")} has its curve switched off.`);
+  }
+  if (result.applied.length === 0 && parts.length === 0) {
+    return "Saved, but no room uses this profile.";
+  }
+  return parts.join(" ");
 }
 
 function describeError(err: unknown): string {

@@ -274,8 +274,8 @@ const se = (e, t) => {
   let r, o = t === 2 ? "<svg>" : t === 3 ? "<math>" : "", n = B;
   for (let a = 0; a < i; a++) {
     const l = e[a];
-    let c, f, u = -1, w = 0;
-    for (; w < l.length && (n.lastIndex = w, f = n.exec(l), f !== null); ) w = n.lastIndex, n === B ? f[1] === "!--" ? n = kt : f[1] !== void 0 ? n = St : f[2] !== void 0 ? (zt.test(f[2]) && (r = RegExp("</" + f[2], "g")), n = C) : f[3] !== void 0 && (n = C) : n === C ? f[0] === ">" ? (n = r ?? B, u = -1) : f[1] === void 0 ? u = -2 : (u = n.lastIndex - f[2].length, c = f[1], n = f[3] === void 0 ? C : f[3] === '"' ? Pt : At) : n === Pt || n === At ? n = C : n === kt || n === St ? n = B : (n = C, r = void 0);
+    let c, g, u = -1, w = 0;
+    for (; w < l.length && (n.lastIndex = w, g = n.exec(l), g !== null); ) w = n.lastIndex, n === B ? g[1] === "!--" ? n = kt : g[1] !== void 0 ? n = St : g[2] !== void 0 ? (zt.test(g[2]) && (r = RegExp("</" + g[2], "g")), n = C) : g[3] !== void 0 && (n = C) : n === C ? g[0] === ">" ? (n = r ?? B, u = -1) : g[1] === void 0 ? u = -2 : (u = n.lastIndex - g[2].length, c = g[1], n = g[3] === void 0 ? C : g[3] === '"' ? Pt : At) : n === Pt || n === At ? n = C : n === kt || n === St ? n = B : (n = C, r = void 0);
     const A = n === C && e[a + 1].startsWith("/>") ? " " : "";
     o += n === B ? l + ee : u >= 0 ? (s.push(c), l.slice(0, u) + Gt + l.slice(u) + E + A) : l + E + (u === -2 ? a : A);
   }
@@ -286,7 +286,7 @@ class J {
     let r;
     this.parts = [];
     let o = 0, n = 0;
-    const a = t.length - 1, l = this.parts, [c, f] = se(t, i);
+    const a = t.length - 1, l = this.parts, [c, g] = se(t, i);
     if (this.el = J.createElement(c, s), N.currentNode = this.el.content, i === 2 || i === 3) {
       const u = this.el.content.firstChild;
       u.replaceWith(...u.childNodes);
@@ -294,7 +294,7 @@ class J {
     for (; (r = N.nextNode()) !== null && l.length < a; ) {
       if (r.nodeType === 1) {
         if (r.hasAttributes()) for (const u of r.getAttributeNames()) if (u.endsWith(Gt)) {
-          const w = f[n++], A = r.getAttribute(u).split(E), M = /([.?@])?(.*)/.exec(w);
+          const w = g[n++], A = r.getAttribute(u).split(E), M = /([.?@])?(.*)/.exec(w);
           l.push({ type: 1, index: o, name: M[2], strings: A, ctor: M[1] === "." ? oe : M[1] === "?" ? ne : M[1] === "@" ? ae : ot }), r.removeAttribute(u);
         } else u.startsWith(E) && (l.push({ type: 6, index: o }), r.removeAttribute(u));
         if (zt.test(r.tagName)) {
@@ -566,7 +566,7 @@ function y(e) {
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-function m(e) {
+function f(e) {
   return y({ ...e, state: !0, attribute: !1 });
 }
 const k = 1440;
@@ -943,13 +943,13 @@ S([
   y({ type: Number })
 ], $.prototype, "width", 2);
 S([
-  m()
+  f()
 ], $.prototype, "painting", 2);
 S([
-  m()
+  f()
 ], $.prototype, "scrubbing", 2);
 S([
-  m()
+  f()
 ], $.prototype, "draggingMarker", 2);
 $ = S([
   gt("lightcurve-curve-graph")
@@ -1203,9 +1203,9 @@ function Ie(e, t, i, s, r, o = Te, n) {
     if (T === null) return v;
     const z = JSON.parse(JSON.stringify(v));
     return Rt(z, i, T, n), z;
-  }), f = s.filter((v) => l(v.minute));
-  if (f.length < 3) return c;
-  const u = i === "brightness" ? 2.5 : i === "warmth" ? 90 : 8, { points: w } = Me(f, o, u), A = c.map((v) => a.get(v.id)).filter((v) => v !== void 0), M = [];
+  }), g = s.filter((v) => l(v.minute));
+  if (g.length < 3) return c;
+  const u = i === "brightness" ? 2.5 : i === "warmth" ? 90 : 8, { points: w } = Me(g, o, u), A = c.map((v) => a.get(v.id)).filter((v) => v !== void 0), M = [];
   for (const v of w) {
     if (c.length + M.length >= o) break;
     if ([...A, ...M.map((X) => Re(X))].some(
@@ -1245,8 +1245,8 @@ function Ge(e, t, i, s = 5) {
   if (e.last >= 0 && e.last !== t) {
     const o = e.last, n = r.get(o) ?? i, a = t - o, l = Math.max(1, Math.round(Math.abs(a) / s));
     for (let c = 1; c <= l; c++) {
-      const f = c / l, u = Q(o + a * f, s);
-      r.set(tt(u), n + (i - n) * f);
+      const g = c / l, u = Q(o + a * g, s);
+      r.set(tt(u), n + (i - n) * g);
     }
   }
   return r.set(tt(Q(t, s)), i), {
@@ -1272,7 +1272,7 @@ function Q(e, t) {
 function tt(e) {
   return (e % k + k) % k;
 }
-var Be = Object.defineProperty, je = Object.getOwnPropertyDescriptor, g = (e, t, i, s) => {
+var Be = Object.defineProperty, je = Object.getOwnPropertyDescriptor, m = (e, t, i, s) => {
   for (var r = s > 1 ? void 0 : s ? je(t, i) : t, o = e.length - 1, n; o >= 0; o--)
     (n = e[o]) && (r = (s ? n(t, i, r) : n(r)) || r);
   return s && r && Be(t, i, r), r;
@@ -1280,7 +1280,7 @@ var Be = Object.defineProperty, je = Object.getOwnPropertyDescriptor, g = (e, t,
 const Le = 300;
 let p = class extends O {
   constructor() {
-    super(...arguments), this.narrow = !1, this.profiles = [], this.groups = [], this.themes = [], this.editingTheme = null, this.themeTarget = [], this.colourPickFor = null, this.profile = null, this.variant = "default", this.samples = [], this.resolved = [], this.sun = {}, this.issues = [], this.selectedId = null, this.previewGroupId = null, this.scrubMinute = null, this.dirty = !1, this.busy = !1, this.error = null, this.graphWidth = 900, this.lastScrubAt = 0, this.stroke = null, this.onKeyframeMove = (e) => {
+    super(...arguments), this.narrow = !1, this.profiles = [], this.groups = [], this.themes = [], this.editingTheme = null, this.themeTarget = [], this.colourPickFor = null, this.profile = null, this.variant = "default", this.samples = [], this.resolved = [], this.sun = {}, this.issues = [], this.selectedId = null, this.previewGroupId = null, this.scrubMinute = null, this.dirty = !1, this.busy = !1, this.error = null, this.notice = null, this.graphWidth = 900, this.lastScrubAt = 0, this.stroke = null, this.onKeyframeMove = (e) => {
       const { id: t, minute: i, sunEvent: s, brightness: r, kelvin: o, hue: n } = e.detail;
       this.mutate(t, (a) => {
         if (s ? a.time = { type: "sun", event: s, offset_min: 0 } : a.time = { type: "fixed", value: P(i) }, r !== void 0 && (a.brightness = r), o !== void 0 && (a.colour = { mode: "kelvin", kelvin: o }), n !== void 0) {
@@ -1619,7 +1619,8 @@ let p = class extends O {
     if (!(!this.profile || this.blocked)) {
       this.busy = !0, this.error = null;
       try {
-        await this.send({ type: "lightcurve/profiles/save", profile: this.profile }), this.dirty = !1, await this.refreshGraph();
+        const e = await this.send({ type: "lightcurve/profiles/save", profile: this.profile });
+        this.dirty = !1, this.notice = Je(e), await Promise.all([this.refreshGraph(), this.reloadGroups()]);
       } catch (e) {
         this.error = x(e);
       } finally {
@@ -1660,6 +1661,11 @@ let p = class extends O {
     const e = this.groups.find((t) => t.id === this.previewGroupId);
     return h`
       ${this.error ? h`<div class="error-banner">${this.error}</div>` : d}
+      ${this.notice ? h`<div class="notice-banner">
+            ${this.notice}
+            <button class="link" @click=${() => this.notice = null}>dismiss</button>
+          </div>` : d}
+      ${this.renderBlockedBanner()}
       <div class="bar">
         <div>
           <label for="profile">Profile</label>
@@ -1975,6 +1981,37 @@ let p = class extends O {
    *  was stuck on whichever profile it was created with. The bathroom wanting a
    *  different day from the lounge is the ordinary case, not an advanced one.
    */
+  /** Why the lights are not following the curve, when they are not.
+   *
+   *  A held room and an unpowered room both look like "the editor does nothing".
+   *  They have different fixes, so they are named separately and the one this panel
+   *  can fix comes with the button that fixes it.
+   */
+  renderBlockedBanner() {
+    const e = this.groups.filter(
+      (i) => i.override_colour || i.override_brightness
+    ), t = this.groups.filter(
+      (i) => i.members_resolved.length > 0 && i.members_available.length === 0
+    );
+    return e.length === 0 && t.length === 0 ? h`${d}` : h`
+      <div class="notice-banner">
+        ${e.length > 0 ? h`<span>
+              <strong>${e.map((i) => i.name).join(", ")}</strong>
+              ${e.length === 1 ? "is" : "are"} holding a theme or a manual change,
+              so the curve is not driving ${e.length === 1 ? "it" : "them"}.
+            </span>
+            <button class="link" @click=${() => void this.releaseThemes()}>
+              Back to curve
+            </button>` : d}
+        ${t.length > 0 ? h`<span>
+              <strong>${t.map((i) => i.name).join(", ")}</strong>
+              ${t.length === 1 ? "has" : "have"} no reachable bulbs — usually a
+              wall switch cutting power. Nothing here can reach
+              ${t.length === 1 ? "it" : "them"} until the power is back.
+            </span>` : d}
+      </div>
+    `;
+  }
   renderRooms() {
     return this.groups.length === 0 ? h`${d}` : h`
       <div class="card">
@@ -2565,6 +2602,28 @@ p.styles = dt`
       white-space: nowrap;
       max-width: 100%;
     }
+    .notice-banner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      background: color-mix(in srgb, var(--warning-color, #ffa600) 20%, transparent);
+      color: var(--primary-text-color, #333);
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+    button.link {
+      background: none;
+      border: none;
+      padding: 4px 8px;
+      min-height: 32px;
+      font-size: 13px;
+      text-decoration: underline;
+      cursor: pointer;
+      color: inherit;
+    }
     .error-banner {
       background: var(--error-color, #d32f2f);
       color: #fff;
@@ -2576,70 +2635,73 @@ p.styles = dt`
       .bar > * { flex: 1 1 100%; }
     }
   `;
-g([
+m([
   y({ attribute: !1 })
 ], p.prototype, "hass", 2);
-g([
+m([
   y({ type: Boolean })
 ], p.prototype, "narrow", 2);
-g([
-  m()
+m([
+  f()
 ], p.prototype, "profiles", 2);
-g([
-  m()
+m([
+  f()
 ], p.prototype, "groups", 2);
-g([
-  m()
+m([
+  f()
 ], p.prototype, "themes", 2);
-g([
-  m()
+m([
+  f()
 ], p.prototype, "editingTheme", 2);
-g([
-  m()
+m([
+  f()
 ], p.prototype, "themeTarget", 2);
-g([
-  m()
+m([
+  f()
 ], p.prototype, "colourPickFor", 2);
-g([
-  m()
+m([
+  f()
 ], p.prototype, "profile", 2);
-g([
-  m()
+m([
+  f()
 ], p.prototype, "variant", 2);
-g([
-  m()
+m([
+  f()
 ], p.prototype, "samples", 2);
-g([
-  m()
+m([
+  f()
 ], p.prototype, "resolved", 2);
-g([
-  m()
+m([
+  f()
 ], p.prototype, "sun", 2);
-g([
-  m()
+m([
+  f()
 ], p.prototype, "issues", 2);
-g([
-  m()
+m([
+  f()
 ], p.prototype, "selectedId", 2);
-g([
-  m()
+m([
+  f()
 ], p.prototype, "previewGroupId", 2);
-g([
-  m()
+m([
+  f()
 ], p.prototype, "scrubMinute", 2);
-g([
-  m()
+m([
+  f()
 ], p.prototype, "dirty", 2);
-g([
-  m()
+m([
+  f()
 ], p.prototype, "busy", 2);
-g([
-  m()
+m([
+  f()
 ], p.prototype, "error", 2);
-g([
-  m()
+m([
+  f()
+], p.prototype, "notice", 2);
+m([
+  f()
 ], p.prototype, "graphWidth", 2);
-p = g([
+p = m([
   gt("lightcurve-panel")
 ], p);
 function Ke(e) {
@@ -2659,6 +2721,14 @@ function Fe(e, t, i, s) {
 function We() {
   const e = /* @__PURE__ */ new Date();
   return e.getHours() * 60 + e.getMinutes();
+}
+function Je(e) {
+  const t = [];
+  return e.applied.length > 0 && t.push(`Applied to ${e.applied.join(", ")}.`), e.held.length > 0 && t.push(
+    `${e.held.join(", ")} ${e.held.length === 1 ? "is" : "are"} holding a theme, so the new curve will not show there until released.`
+  ), e.unreachable.length > 0 && t.push(
+    `${e.unreachable.join(", ")} had no reachable bulbs.`
+  ), e.disabled.length > 0 && t.push(`${e.disabled.join(", ")} has its curve switched off.`), e.applied.length === 0 && t.length === 0 ? "Saved, but no room uses this profile." : t.join(" ");
 }
 function x(e) {
   return e && typeof e == "object" && "message" in e ? String(e.message) : String(e);

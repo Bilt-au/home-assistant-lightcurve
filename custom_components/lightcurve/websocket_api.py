@@ -160,11 +160,39 @@ async def profiles_save(hass, connection, msg, coordinator) -> None:
     except StoreError as err:
         connection.send_error(msg["id"], "invalid_profile", str(err))
         return
-    # A saved profile should reach the lights now, not at the next tick.
+    # A saved profile should reach the lights now, not at the next tick — and when
+    # it cannot, the editor has to say so. Silence here reads as "editing the curve
+    # does nothing", which is what a held or unpowered room looks like from the
+    # outside.
+    applied: list[str] = []
+    held: list[str] = []
+    unreachable: list[str] = []
+    disabled: list[str] = []
     for group in coordinator.groups.values():
-        if group.profile_id == profile.get("id") and group.enabled:
+        if group.profile_id != profile.get("id"):
+            continue
+        runtime = coordinator.runtime(group.id)
+        if not group.enabled:
+            disabled.append(group.name)
+        elif not coordinator.available_members(group):
+            unreachable.append(group.name)
+        elif runtime.override_colour and runtime.override_brightness:
+            held.append(group.name)
+        else:
             await coordinator.async_apply(group, force=True)
-    connection.send_result(msg["id"], {"profile": profile, "issues": issues})
+            applied.append(group.name)
+
+    connection.send_result(
+        msg["id"],
+        {
+            "profile": profile,
+            "issues": issues,
+            "applied": applied,
+            "held": held,
+            "unreachable": unreachable,
+            "disabled": disabled,
+        },
+    )
 
 
 @websocket_api.require_admin
