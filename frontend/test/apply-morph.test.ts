@@ -213,3 +213,67 @@ describe("applyEditToKeyframes with a painted span", () => {
     expect(result.find((k) => k.id === "day")!.brightness).toBe(50);
   });
 });
+
+describe("colour saturation", () => {
+  function kfColour(id: string, minute: number, colour: Keyframe["colour"]): Keyframe {
+    return {
+      id,
+      time: { type: "fixed", value: `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}` },
+      colour,
+      brightness: 30,
+      easing: "ease_in_out",
+    };
+  }
+
+  it("paints a chosen saturation, not always full", () => {
+    // Without this, every painted colour is fully saturated and "deep orange"
+    // cannot be distinguished from "a washed pastel orange".
+    const keyframes = [
+      kfColour("a", 0, { mode: "hs", hs: [0, 100] }),
+      kfColour("b", 720, { mode: "hs", hs: [0, 100] }),
+    ];
+    const resolved = resolvedFrom(keyframes, [0, 720]);
+    const painted = Array.from({ length: 288 }, (_, i) => ({ minute: i * 5, value: 25 }));
+    const result = applyEditToKeyframes(
+      keyframes, resolved, "colour", painted,
+      { kind: "span", from: 0, to: 720 }, 48, 70
+    );
+    const b = result.find((k) => k.id === "b")!;
+    expect(b.colour.mode).toBe("hs");
+    expect(b.colour.hs).toEqual([25, 70]);
+  });
+
+  it("converts a white keyframe to a colour when painted in the colour lane", () => {
+    // The only way to turn part of a white curve into a coloured section by
+    // dragging, rather than editing every keyframe by hand.
+    const keyframes = [
+      kfColour("white", 0, { mode: "kelvin", kelvin: 2700 }),
+      kfColour("later", 720, { mode: "kelvin", kelvin: 4000 }),
+    ];
+    const resolved = resolvedFrom(keyframes, [0, 720]);
+    const painted = Array.from({ length: 288 }, (_, i) => ({ minute: i * 5, value: 20 }));
+    const result = applyEditToKeyframes(
+      keyframes, resolved, "colour", painted,
+      { kind: "span", from: 0, to: 60 }, 48, 95
+    );
+    expect(result.find((k) => k.id === "white")!.colour).toEqual({
+      mode: "hs",
+      hs: [20, 95],
+    });
+    // and a keyframe outside the painted span keeps its white
+    expect(result.find((k) => k.id === "later")!.colour.mode).toBe("kelvin");
+  });
+
+  it("keeps the existing saturation when the brush does not supply one", () => {
+    const keyframes = [
+      kfColour("a", 0, { mode: "hs", hs: [200, 40] }),
+      kfColour("b", 720, { mode: "hs", hs: [200, 40] }),
+    ];
+    const resolved = resolvedFrom(keyframes, [0, 720]);
+    const painted = Array.from({ length: 288 }, (_, i) => ({ minute: i * 5, value: 120 }));
+    const result = applyEditToKeyframes(
+      keyframes, resolved, "colour", painted, { kind: "span", from: 0, to: 720 }
+    );
+    expect(result.find((k) => k.id === "a")!.colour.hs).toEqual([120, 40]);
+  });
+});

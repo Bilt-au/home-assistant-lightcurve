@@ -82,6 +82,13 @@ hardware cannot enter.
   drifting out of correctness over the following months.
 - **The strip beneath the lanes scrubs**, and the selected room's real bulbs follow
   that time of day. Releasing returns them to the curve.
+- **The colour brush has a saturation control.** Hue comes from how high you drag;
+  saturation is set separately, because without it every painted colour is fully
+  saturated and a deep orange cannot be distinguished from a washed pastel one.
+- **Click a swatch in the keyframe table** to set that keyframe's colour exactly,
+  with a wheel for colours or a slider for colour temperature, and to switch a
+  keyframe between white and colour. Dragging is good for a sweep and useless for
+  "this precise orange", which is what a long coloured section needs.
 - Faint ticks mark where the keyframes fell. They are not handles — the lane is a
   drawing surface, and anything that looks draggable invites a gesture that no longer
   exists. Use the keyframe table below for precise edits.

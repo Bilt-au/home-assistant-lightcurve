@@ -54,6 +54,11 @@ export class LightcurvePanel extends LitElement {
   @state() private editingTheme: Theme | null = null;
   /** Which rooms a theme press should reach. Empty means whatever it covers. */
   @state() private themeTarget: string[] = [];
+  /** Saturation the colour lane paints with. Hue comes from the cursor height; this
+   *  is the other half, and without it a painted colour is always fully saturated. */
+  @state() private paintSaturation = 90;
+  /** Which keyframe's colour is being picked, if any. */
+  @state() private colourPickFor: string | null = null;
   @state() private profile: Profile | null = null;
   @state() private variant = "default";
   @state() private samples: Sample[] = [];
@@ -236,6 +241,29 @@ export class LightcurvePanel extends LitElement {
       display: inline-block;
       margin: 0 6px 0 0;
       vertical-align: -2px;
+    }
+    .swatch.big { width: 22px; height: 22px; }
+    button.swatch-button {
+      background: none;
+      border: none;
+      padding: 2px 4px;
+      min-height: 0;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+    button.swatch-button:hover { background: rgba(0, 0, 0, 0.1); }
+    .brush {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin: 12px 0 4px;
+    }
+    .brush input[type="range"] {
+      flex: 1 1 160px;
+      max-width: 240px;
+      accent-color: var(--primary-color, #03a9f4);
+      height: 34px;
     }
     .editor h3 {
       margin: 0;
@@ -466,7 +494,7 @@ export class LightcurvePanel extends LitElement {
     }));
     const painted = applyStroke(points, this.stroke);
     this.samples = this.samples.map((sample, index) =>
-      withLaneValue(sample, lane, painted[index].value)
+      withLaneValue(sample, lane, painted[index].value, this.paintSaturation)
     );
     this.dirty = true;
   };
@@ -484,10 +512,15 @@ export class LightcurvePanel extends LitElement {
       minute: sample.minute,
       value: laneValue(sample, lane),
     }));
-    const keyframes = applyEditToKeyframes(this.keyframes, this.resolved, lane, points, {
-      kind: "span",
-      ...span,
-    });
+    const keyframes = applyEditToKeyframes(
+      this.keyframes,
+      this.resolved,
+      lane,
+      points,
+      { kind: "span", ...span },
+      undefined,
+      lane === "colour" ? this.paintSaturation : undefined
+    );
     this.profile = {
       ...this.profile,
       variants: { ...this.profile.variants, [this.variant]: { keyframes } },
@@ -856,6 +889,28 @@ export class LightcurvePanel extends LitElement {
           @scrub=${this.onScrub}
           @scrub-end=${this.onScrubEnd}
         ></lightcurve-curve-graph>
+        <div class="brush">
+          <span class="inline-label">Colour lane paints</span>
+          <span
+            class="swatch inline big"
+            style="background:${hsToCss(30, this.paintSaturation)}"
+          ></span>
+          <label class="inline-label" for="sat">saturation ${this.paintSaturation}%</label>
+          <input
+            id="sat"
+            type="range"
+            min="0"
+            max="100"
+            .value=${String(this.paintSaturation)}
+            @input=${(e: Event) => {
+              this.paintSaturation = Number((e.target as HTMLInputElement).value);
+            }}
+          />
+          <span class="hint">
+            Hue comes from how high you drag; this sets how strong the colour is.
+            Low values give a washed, pastel light; 100% is fully saturated.
+          </span>
+        </div>
         <p class="hint">
           Drag across a lane to draw it: every moment your cursor passes takes its
           height. Keyframes are rebuilt from what you drew, and the ones you did not
@@ -1203,6 +1258,98 @@ export class LightcurvePanel extends LitElement {
             </tbody>
           </table>
         </div>
+        ${this.colourPickFor ? this.renderKeyframeColour(this.colourPickFor) : nothing}
+      </div>
+    `;
+  }
+
+  /** Pick one keyframe's colour exactly.
+   *
+   *  Dragging the colour lane is good for a sweep and useless for "this precise
+   *  orange". A keyframe can also be switched between a colour temperature and a
+   *  colour here, which is the only way to turn part of a white curve into a
+   *  coloured section without painting over it.
+   */
+  private renderKeyframeColour(keyframeId: string): TemplateResult {
+    const keyframe = this.keyframes.find((k) => k.id === keyframeId);
+    if (!keyframe) return html`${nothing}`;
+    const hs = keyframe.colour.hs ?? [30, 90];
+    return html`
+      <div class="editor">
+        <h3>Colour at ${this.resolved.find((r) => r.id === keyframeId)
+          ? formatMinute(this.resolved.find((r) => r.id === keyframeId)!.minute)
+          : keyframeId}</h3>
+        <div class="row">
+          <div>
+            <label for="kf-mode">Type</label>
+            <select
+              id="kf-mode"
+              @change=${(e: Event) => {
+                const mode = (e.target as HTMLSelectElement).value;
+                this.mutate(keyframe.id, (k) => {
+                  k.colour =
+                    mode === "kelvin"
+                      ? { mode: "kelvin", kelvin: 2700 }
+                      : { mode: "hs", hs: [30, 90] };
+                });
+                void this.refreshGraph();
+              }}
+            >
+              <option value="kelvin" ?selected=${keyframe.colour.mode === "kelvin"}>
+                White (colour temperature)
+              </option>
+              <option value="hs" ?selected=${keyframe.colour.mode === "hs"}>
+                Colour
+              </option>
+            </select>
+          </div>
+          ${keyframe.colour.mode === "kelvin"
+            ? html`<div class="grow">
+                <label for="kf-kelvin">
+                  ${keyframe.colour.kelvin}K — warm to cool
+                </label>
+                <input
+                  id="kf-kelvin"
+                  type="range"
+                  min="2200"
+                  max="6500"
+                  step="50"
+                  .value=${String(keyframe.colour.kelvin ?? 2700)}
+                  @input=${(e: Event) => {
+                    this.mutate(keyframe.id, (k) => {
+                      k.colour = {
+                        mode: "kelvin",
+                        kelvin: Number((e.target as HTMLInputElement).value),
+                      };
+                    });
+                  }}
+                  @change=${() => void this.refreshGraph()}
+                />
+              </div>`
+            : nothing}
+        </div>
+        ${keyframe.colour.mode === "hs"
+          ? html`<lightcurve-colour-wheel
+              .hue=${hs[0]}
+              .saturation=${hs[1]}
+              .brightness=${keyframe.brightness}
+              @colour-change=${(e: CustomEvent) => {
+                this.mutate(keyframe.id, (k) => {
+                  k.colour = {
+                    mode: "hs",
+                    hs: [e.detail.hue, e.detail.saturation],
+                  };
+                  k.brightness = e.detail.brightness;
+                });
+                void this.refreshGraph();
+              }}
+            ></lightcurve-colour-wheel>`
+          : nothing}
+        <div class="row">
+          <button class="secondary" @click=${() => (this.colourPickFor = null)}>
+            Done
+          </button>
+        </div>
       </div>
     `;
   }
@@ -1244,7 +1391,18 @@ export class LightcurvePanel extends LitElement {
           ${resolved ? formatMinute(resolved.minute) : "—"}
         </td>
         <td>
-          <span class="swatch inline" style="background:${swatch}"></span>
+          <button
+            class="swatch-button"
+            title="Pick this keyframe's colour"
+            @click=${(e: Event) => {
+              e.stopPropagation();
+              this.selectedId = keyframe.id;
+              this.colourPickFor =
+                this.colourPickFor === keyframe.id ? null : keyframe.id;
+            }}
+          >
+            <span class="swatch inline" style="background:${swatch}"></span>
+          </button>
           ${keyframe.colour.mode === "kelvin"
             ? html`<input
                 class="cell narrow"
@@ -1443,15 +1601,20 @@ function laneValue(sample: Sample, lane: Lane): number {
 }
 
 /** Put a morphed value back into a sample, keeping the rest of it intact. */
-function withLaneValue(sample: Sample, lane: Lane, value: number): Sample {
+function withLaneValue(
+  sample: Sample,
+  lane: Lane,
+  value: number,
+  saturation?: number
+): Sample {
   if (lane === "brightness") {
     return { ...sample, brightness_pct: Math.round(value) };
   }
   if (lane === "warmth") {
     return { ...sample, mode: "kelvin", kelvin: Math.round(value) };
   }
-  const saturation = sample.hs ? sample.hs[1] : 100;
-  return { ...sample, mode: "hs", hs: [Math.round(value) % 360, saturation] };
+  const s = saturation ?? (sample.hs ? sample.hs[1] : 100);
+  return { ...sample, mode: "hs", hs: [Math.round(value) % 360, Math.round(s)] };
 }
 
 function nowMinute(): number {

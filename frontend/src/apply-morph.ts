@@ -53,14 +53,22 @@ function valueAt(points: Point[], minute: number): number | null {
   return best ? best.value : null;
 }
 
-function setLaneValue(keyframe: Keyframe, lane: Lane, value: number): void {
+function setLaneValue(
+  keyframe: Keyframe,
+  lane: Lane,
+  value: number,
+  saturation?: number
+): void {
   if (lane === "brightness") {
     keyframe.brightness = Math.round(Math.min(100, Math.max(1, value)));
   } else if (lane === "warmth") {
     keyframe.colour = { mode: "kelvin", kelvin: Math.round(value) };
   } else {
-    const saturation = keyframe.colour.hs?.[1] ?? 100;
-    keyframe.colour = { mode: "hs", hs: [Math.round(value) % 360, saturation] };
+    // Saturation comes from the brush when painting, so a drag can lay down a
+    // specific colour rather than only moving around the hue circle at full
+    // saturation. Falls back to whatever the keyframe already had.
+    const s = saturation ?? keyframe.colour.hs?.[1] ?? 100;
+    keyframe.colour = { mode: "hs", hs: [Math.round(value) % 360, Math.round(s)] };
   }
 }
 
@@ -77,7 +85,8 @@ export function applyEditToKeyframes(
   lane: Lane,
   morphed: Point[],
   region: Region,
-  budget = MAX_KEYFRAMES
+  budget = MAX_KEYFRAMES,
+  saturation?: number
 ): Keyframe[] {
   const minuteOf = new Map(resolved.map((r) => [r.id, r.minute]));
   const within = (minute: number) => inRegion(region, minute);
@@ -89,7 +98,7 @@ export function applyEditToKeyframes(
     const value = valueAt(morphed, minute);
     if (value === null) return keyframe;
     const copy: Keyframe = JSON.parse(JSON.stringify(keyframe));
-    setLaneValue(copy, lane, value);
+    setLaneValue(copy, lane, value, saturation);
     return copy;
   });
 
@@ -123,7 +132,7 @@ export function applyEditToKeyframes(
       brightness: template ? template.brightness : 50,
       easing: template ? template.easing : "ease_in_out",
     };
-    setLaneValue(addition, lane, candidate.value);
+    setLaneValue(addition, lane, candidate.value, saturation);
     additions.push(addition);
   }
 
