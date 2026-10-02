@@ -355,15 +355,24 @@ async def themes_list(hass, connection, msg, coordinator) -> None:
             {
                 **theme.to_dict(),
                 "covers": [names.get(g, g) for g in covered],
-                # Which theme is showing, not merely whether something is. Deriving
-                # this from the override flags lit up every theme that covered the
-                # room as soon as any one of them was applied.
-                "holding": bool(covered)
-                and all(
+                # Which theme is showing, not merely whether something is: deriving
+                # this from the override flags lit up every theme covering the room
+                # as soon as any one was applied.
+                #
+                # "Any room", not "every room". A theme skips rooms whose bulbs are
+                # unreachable — a wall switch turned off is enough — and requiring
+                # all of them meant a theme plainly showing in two rooms reported
+                # itself as not holding, which also disabled the way back.
+                "holding": any(
                     coordinator.runtime(g).active_theme == theme.id
                     for g in covered
                     if g in names
                 ),
+                "holding_in": [
+                    names[g]
+                    for g in covered
+                    if g in names and coordinator.runtime(g).active_theme == theme.id
+                ],
             }
         )
     connection.send_result(msg["id"], {"themes": out})

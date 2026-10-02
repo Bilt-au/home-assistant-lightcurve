@@ -649,7 +649,7 @@ export class LightcurvePanel extends LitElement {
       // that is unavailable. Saying so beats a button that appears to do nothing.
       this.error = describeError(err);
     }
-    await this.refreshThemes();
+    await Promise.all([this.refreshThemes(), this.reloadGroups()]);
   }
 
   private async releaseThemes(): Promise<void> {
@@ -782,6 +782,7 @@ export class LightcurvePanel extends LitElement {
           hold_minutes: null,
           covers: [],
           holding: false,
+          holding_in: [],
         };
   }
 
@@ -987,7 +988,9 @@ export class LightcurvePanel extends LitElement {
   /** Buttons for the saved themes, and the editor for one of them. */
   private renderThemes(): TemplateResult {
     if (this.themes.length === 0) return html`${nothing}`;
-    const anyHolding = this.themes.some((theme) => theme.holding);
+    const anyHeld = this.groups.some(
+      (group) => group.override_colour || group.override_brightness
+    );
     return html`
       <div class="card">
         <div class="themes-head">
@@ -1018,10 +1021,10 @@ export class LightcurvePanel extends LitElement {
           </button>
           <button
             class="secondary small"
-            ?disabled=${!anyHolding}
-            title=${anyHolding
+            ?disabled=${!anyHeld}
+            title=${anyHeld
               ? "Return every room to its curve"
-              : "Nothing is holding a theme"}
+              : "Every room is already following its curve"}
             @click=${() => void this.releaseThemes()}
           >
             Back to curve
@@ -1048,7 +1051,11 @@ export class LightcurvePanel extends LitElement {
                               : ""
                           }`}
                     </span>
-                    <span class="theme-covers">${theme.covers.join(", ")}</span>
+                    <span class="theme-covers">
+                      ${theme.holding && theme.holding_in.length < theme.covers.length
+                        ? `showing in ${theme.holding_in.join(", ")}`
+                        : theme.covers.join(", ")}
+                    </span>
                   </span>
                 </button>
                 <button

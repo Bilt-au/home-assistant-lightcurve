@@ -630,3 +630,33 @@ async def test_pointing_a_room_at_an_unknown_profile_is_refused(ws):
     )
     assert not reply["success"]
     assert reply["error"]["code"] == "not_found"
+
+
+async def test_a_theme_holds_even_when_some_rooms_are_unreachable(hass, ws, members):
+    """A theme skips rooms whose bulbs are unreachable — a wall switch turned off is
+    enough. Requiring every room to have it meant a theme plainly showing in two
+    rooms reported itself as not holding, which also disabled the way back."""
+    from pytest_homeassistant_custom_component.common import async_mock_service
+
+    coordinator = next(iter(hass.data["lightcurve"].values()))
+    from custom_components.lightcurve.store import Group
+
+    await coordinator.store.async_put_group(
+        Group(
+            id="g_dark", name="Dark room", members=["light.dark_1"],
+            profile_id="p_default",
+        )
+    )
+    hass.states.async_set("light.dark_1", "unavailable", {})
+
+    async_mock_service(hass, "light", "turn_on")
+    with freeze_time(MORNING_UTC):
+        reply = await call(ws, {"type": "lightcurve/themes/apply", "theme_id": "t_mood"})
+    assert reply["success"]
+    assert "g_dark" not in reply["result"]["applied"]
+
+    listed = await call(ws, {"type": "lightcurve/themes/list"})
+    mood = next(t for t in listed["result"]["themes"] if t["name"] == "Mood")
+    assert mood["holding"] is True, "it is showing in the reachable room"
+    assert mood["holding_in"] == ["Toilet"]
+    assert "Dark room" in mood["covers"], "it still covers the room it could not reach"

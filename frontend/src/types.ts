@@ -91,8 +91,10 @@ export interface Theme {
   hold_minutes: number | null;
   /** Group names, resolved for display. */
   covers: string[];
-  /** Every group it covers has stopped following the curve. */
+  /** This theme is showing in at least one room it covers. */
   holding: boolean;
+  /** The rooms it is actually showing in, which may be fewer than it covers. */
+  holding_in: string[];
 }
 
 export interface ValidationIssue {
