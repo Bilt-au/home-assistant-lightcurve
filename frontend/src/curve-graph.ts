@@ -1,11 +1,16 @@
-/** The three-lane curve graph.
+/** The curve graph: a brightness lane you draw on, and a colour ribbon you pick on.
  *
- *  Brightness is independent and always editable. Warmth and colour are the same
- *  channel — a keyframe is a colour temperature or a hue, never both, because the
- *  bulb cannot be 3000 K and red at once — so each is drawn greyed where the curve
- *  is in the other mode. Showing both lanes with the inactive one dimmed is honest
- *  about that constraint; two freely editable lanes would imply a state the hardware
- *  cannot enter.
+ *  An earlier version had three lanes — brightness, warmth and colour — with warmth
+ *  and colour greyed out according to which mode the curve was in, because a
+ *  keyframe holds a colour temperature or a hue and never both. That was accurate
+ *  about the data and wrong about the question people ask, which is simply "what
+ *  colour is the light at seven?" Whether the answer happens to be a white or an
+ *  orange is an implementation detail, and making the user think about it meant
+ *  they could not set a colour at all without first understanding the model.
+ *
+ *  So: one ribbon showing the colour the lights will actually be, all day, with a
+ *  marker per keyframe. Tap anywhere on it to set the colour at that moment, from
+ *  one picker that offers both whites and colours.
  */
 
 import { LitElement, css, html, svg, type TemplateResult } from "lit";
@@ -13,24 +18,23 @@ import { customElement, property, state } from "lit/decorators.js";
 import {
   brightnessToY,
   formatMinute,
-  kelvinToY,
+  hitTest,
   minuteToX,
+  snapToSun,
   xToMinute,
   yToBrightness,
-  yToKelvin,
   type Plot,
 } from "./geometry";
 import { MINUTES_PER_DAY, type ResolvedKeyframe, type Sample, type SunEvents } from "./types";
 
-type Lane = "brightness" | "warmth" | "colour";
-
-const LANE_HEIGHT = 128;
-const LANE_GAP = 18;
+const BRIGHTNESS_HEIGHT = 150;
+const RIBBON_HEIGHT = 74;
+const GAP = 26;
 const GUTTER_LEFT = 46;
 const GUTTER_RIGHT = 14;
 const GUTTER_TOP = 22;
-const STRIP_HEIGHT = 26;
 const SCRUB_HEIGHT = 34;
+const AXIS_HEIGHT = 20;
 
 @customElement("lightcurve-curve-graph")
 export class CurveGraph extends LitElement {
@@ -39,29 +43,20 @@ export class CurveGraph extends LitElement {
   @property({ attribute: false }) sun: SunEvents = {};
   @property({ type: Number }) nowMinute = 0;
   @property({ type: String }) selectedId: string | null = null;
-  @property({ type: Number }) minKelvin = 2200;
-  @property({ type: Number }) maxKelvin = 6500;
   @property({ type: Number }) scrubMinute: number | null = null;
   @property({ type: Number }) width = 900;
 
-  @state() private painting: Lane | null = null;
+  @state() private painting = false;
   @state() private scrubbing = false;
+  @state() private draggingMarker: string | null = null;
 
   static override styles = css`
-    :host {
-      display: block;
-      touch-action: none;
-      user-select: none;
-    }
-    svg {
-      display: block;
-      width: 100%;
-      height: auto;
-      overflow: visible;
-    }
+    :host { display: block; touch-action: none; user-select: none; }
+    svg { display: block; width: 100%; height: auto; overflow: visible; }
     .lane-bg {
       fill: var(--card-background-color, #fff);
       stroke: var(--divider-color, #e0e0e0);
+      cursor: crosshair;
     }
     .lane-title {
       fill: var(--secondary-text-color, #666);
@@ -73,24 +68,10 @@ export class CurveGraph extends LitElement {
       fill: var(--secondary-text-color, #888);
       font: 10px var(--paper-font-body1_-_font-family, sans-serif);
     }
-    .grid {
-      stroke: var(--divider-color, #e8e8e8);
-      stroke-width: 1;
-    }
-    .now {
-      stroke: var(--error-color, #d32f2f);
-      stroke-width: 2;
-      stroke-dasharray: 3 3;
-    }
-    .scrub {
-      stroke: var(--primary-color, #03a9f4);
-      stroke-width: 2;
-    }
-    .sun {
-      stroke: var(--secondary-text-color, #aaa);
-      stroke-width: 1;
-      stroke-dasharray: 2 4;
-    }
+    .grid { stroke: var(--divider-color, #e8e8e8); stroke-width: 1; }
+    .now { stroke: var(--error-color, #d32f2f); stroke-width: 2; stroke-dasharray: 3 3; }
+    .scrub { stroke: var(--primary-color, #03a9f4); stroke-width: 2; }
+    .sun { stroke: var(--secondary-text-color, #aaa); stroke-width: 1; stroke-dasharray: 2 4; }
     .curve {
       fill: none;
       stroke: var(--primary-color, #03a9f4);
@@ -98,27 +79,21 @@ export class CurveGraph extends LitElement {
       stroke-linejoin: round;
       stroke-linecap: round;
     }
-    .curve.muted {
-      stroke: var(--disabled-text-color, #bbb);
-      stroke-width: 1.5;
-      stroke-dasharray: 4 4;
-    }
-    .inactive-wash {
-      fill: var(--card-background-color, #fff);
-      opacity: 0.66;
+    .kf-tick { stroke: var(--secondary-text-color, #999); stroke-width: 2; opacity: 0.5; }
+    .ribbon { cursor: crosshair; }
+    .ribbon-frame {
+      fill: none;
+      stroke: var(--divider-color, #ddd);
       pointer-events: none;
     }
-    .inactive-note {
-      fill: var(--secondary-text-color, #888);
-      font: italic 11px var(--paper-font-body1_-_font-family, sans-serif);
-      pointer-events: none;
+    .marker {
+      stroke: #fff;
+      stroke-width: 2.5;
+      cursor: grab;
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
     }
-    .kf-tick {
-      stroke: var(--secondary-text-color, #999);
-      stroke-width: 2;
-      opacity: 0.5;
-    }
-    .lane-bg { cursor: crosshair; }
+    .marker.selected { stroke: var(--primary-color, #03a9f4); stroke-width: 3.5; }
+    .marker-hit { fill: transparent; cursor: grab; }
     .scrub-bar {
       fill: var(--secondary-background-color, #eee);
       stroke: var(--divider-color, #ddd);
@@ -136,22 +111,21 @@ export class CurveGraph extends LitElement {
     return Math.max(120, this.width - GUTTER_LEFT - GUTTER_RIGHT);
   }
 
-  private plotFor(lane: Lane): Plot {
-    const index = lane === "brightness" ? 0 : lane === "warmth" ? 1 : 2;
+  private get brightnessPlot(): Plot {
+    return { left: GUTTER_LEFT, top: GUTTER_TOP, width: this.plotWidth, height: BRIGHTNESS_HEIGHT };
+  }
+
+  private get ribbonPlot(): Plot {
     return {
       left: GUTTER_LEFT,
-      top: GUTTER_TOP + index * (LANE_HEIGHT + LANE_GAP + STRIP_HEIGHT),
+      top: GUTTER_TOP + BRIGHTNESS_HEIGHT + GAP,
       width: this.plotWidth,
-      height: LANE_HEIGHT,
+      height: RIBBON_HEIGHT,
     };
   }
 
-  private get lanesHeight(): number {
-    return GUTTER_TOP + 3 * (LANE_HEIGHT + LANE_GAP + STRIP_HEIGHT);
-  }
-
   private get scrubTop(): number {
-    return this.lanesHeight + 6;
+    return this.ribbonPlot.top + RIBBON_HEIGHT + AXIS_HEIGHT + 10;
   }
 
   private get totalHeight(): number {
@@ -159,186 +133,137 @@ export class CurveGraph extends LitElement {
   }
 
   override render(): TemplateResult {
-    const height = this.totalHeight;
     return html`
       <svg
-        viewBox="0 0 ${this.width} ${height}"
+        viewBox="0 0 ${this.width} ${this.totalHeight}"
         @pointerdown=${this.onPointerDown}
         @pointermove=${this.onPointerMove}
         @pointerup=${this.onPointerUp}
         @pointercancel=${this.onPointerUp}
       >
-        ${this.renderLane("brightness", "Brightness")}
-        ${this.renderLane("warmth", "Warmth")}
-        ${this.renderLane("colour", "Colour")}
+        ${this.renderBrightness()}
+        ${this.renderRibbon()}
         ${this.renderScrubBar()}
       </svg>
     `;
   }
 
-  /** Previewing lives here, because dragging a lane now deforms the curve.
-   *  Keeping both on the same surface would mean a mode, and a mode means
-   *  sometimes dragging and getting the wrong one. */
-  private renderScrubBar(): TemplateResult {
-    const plot: Plot = {
-      left: GUTTER_LEFT,
-      top: this.scrubTop,
-      width: this.plotWidth,
-      height: SCRUB_HEIGHT,
-    };
-    const handle =
-      this.scrubMinute === null ? null : minuteToX(this.scrubMinute, plot);
+  // --- brightness -----------------------------------------------------------
+
+  private renderBrightness(): TemplateResult {
+    const plot = this.brightnessPlot;
+    const points = this.samples
+      .filter((s) => s.brightness_pct !== null)
+      .map(
+        (s) =>
+          `${minuteToX(s.minute, plot).toFixed(1)},${brightnessToY(
+            s.brightness_pct!,
+            plot
+          ).toFixed(1)}`
+      );
     return svg`
       <g>
-        <rect class="scrub-bar" x=${plot.left} y=${plot.top}
-              width=${plot.width} height=${plot.height} rx=${SCRUB_HEIGHT / 2} />
+        <text class="lane-title" x=${plot.left} y=${plot.top - 7}>Brightness</text>
+        <rect class="lane-bg" x=${plot.left} y=${plot.top}
+              width=${plot.width} height=${plot.height} rx="6" />
+        ${this.renderGrid(plot, false)}
+        ${[100, 50, 1].map(
+          (pct) => svg`<text class="axis-label" x=${plot.left - 6}
+                             y=${brightnessToY(pct, plot) + 3}
+                             text-anchor="end">${pct}%</text>`
+        )}
+        ${points.length > 1
+          ? svg`<polyline class="curve" points=${points.join(" ")} />`
+          : ""}
+        ${this.keyframes.map((k) => {
+          const x = minuteToX(k.minute, plot);
+          return svg`<line class="kf-tick" x1=${x} y1=${plot.top + plot.height - 8}
+                           x2=${x} y2=${plot.top + plot.height} />`;
+        })}
+        ${this.renderSun(plot)} ${this.renderNow(plot)} ${this.renderScrub(plot)}
+      </g>
+    `;
+  }
+
+  // --- colour ribbon --------------------------------------------------------
+
+  private renderRibbon(): TemplateResult {
+    const plot = this.ribbonPlot;
+    return svg`
+      <g>
+        <text class="lane-title" x=${plot.left} y=${plot.top - 7}>
+          Colour — tap to set
+        </text>
         ${this.samples.map((sample, index) => {
           const next = this.samples[index + 1];
           const x = minuteToX(sample.minute, plot);
           const nextX = next ? minuteToX(next.minute, plot) : plot.left + plot.width;
           const rgb = sample.rgb ?? [80, 80, 80];
-          return svg`<rect x=${x} y=${plot.top + 7}
-                           width=${Math.max(1, nextX - x)} height=${SCRUB_HEIGHT - 14}
+          return svg`<rect class="ribbon" x=${x} y=${plot.top}
+                           width=${Math.max(1, nextX - x + 0.5)} height=${plot.height}
                            fill="rgb(${rgb[0]},${rgb[1]},${rgb[2]})" />`;
         })}
-        <text class="axis-label" x=${plot.left - 6} y=${plot.top + SCRUB_HEIGHT / 2 + 3}
-              text-anchor="end">preview</text>
-        ${handle === null
-          ? ""
-          : svg`<circle class="scrub-handle" cx=${handle}
-                        cy=${plot.top + SCRUB_HEIGHT / 2} r="9" />`}
-      </g>
-    `;
-  }
-
-  private renderLane(lane: Lane, title: string): TemplateResult {
-    const plot = this.plotFor(lane);
-    const active = this.samples.filter((s) => this.laneApplies(lane, s));
-    const inactive = active.length === 0 && lane !== "brightness";
-
-    return svg`
-      <g>
-        <text class="lane-title" x=${plot.left} y=${plot.top - 7}>${title}</text>
-        <rect class="lane-bg" x=${plot.left} y=${plot.top}
+        <rect class="ribbon-frame" x=${plot.left} y=${plot.top}
               width=${plot.width} height=${plot.height} rx="6" />
-        ${this.renderGrid(plot, lane)}
-        ${this.renderGradientStrip(plot, lane)}
-        ${this.renderCurve(plot, lane)}
-        ${this.renderSunMarkers(plot)}
-        ${this.renderNow(plot)}
-        ${this.renderScrub(plot)}
-        ${this.renderKeyframeTicks(plot, lane)}
-        ${inactive
-          ? svg`
-            <rect class="inactive-wash" x=${plot.left} y=${plot.top}
-                  width=${plot.width} height=${plot.height} rx="6" />
-            <text class="inactive-note" x=${plot.left + plot.width / 2}
-                  y=${plot.top + plot.height / 2} text-anchor="middle">
-              ${lane === "warmth"
-                ? "this curve has no colour-temperature section"
-                : "this curve has no colour section"}
-            </text>`
-          : ""}
+        ${this.renderSun(plot)} ${this.renderNow(plot)} ${this.renderScrub(plot)}
+        ${this.markers().map((marker) => {
+          const keyframe = this.keyframes.find((k) => k.id === marker.id)!;
+          const fill =
+            keyframe.mode === "hs"
+              ? `hsl(${keyframe.hs?.[0] ?? 0}, ${keyframe.hs?.[1] ?? 100}%, 50%)`
+              : "#ffffff";
+          return svg`
+            <g>
+              <circle class="marker-hit" cx=${marker.x} cy=${marker.y} r="22"
+                      data-id=${marker.id} />
+              <circle class="marker ${this.selectedId === marker.id ? "selected" : ""}"
+                      cx=${marker.x} cy=${marker.y} r="9" fill=${fill}>
+                <title>${formatMinute(keyframe.minute)} — tap to set the colour</title>
+              </circle>
+            </g>`;
+        })}
+        ${this.renderHourLabels(plot)}
       </g>
     `;
   }
 
-  /** Is this sample edited in this lane? Warmth and colour are mutually exclusive. */
-  private laneApplies(lane: Lane, sample: Sample): boolean {
-    if (lane === "brightness") return sample.brightness_pct !== null;
-    if (lane === "warmth") return sample.mode === "kelvin";
-    return sample.mode === "hs";
+  /** One marker per keyframe, sitting on the ribbon. */
+  private markers(): { id: string; x: number; y: number }[] {
+    const plot = this.ribbonPlot;
+    return this.keyframes.map((keyframe) => ({
+      id: keyframe.id,
+      x: minuteToX(keyframe.minute, plot),
+      y: plot.top + plot.height / 2,
+    }));
   }
 
-  private renderGrid(plot: Plot, lane: Lane): TemplateResult {
-    const lines = [];
+  // --- shared furniture -----------------------------------------------------
+
+  private renderGrid(plot: Plot, labels: boolean): TemplateResult {
+    const out = [];
     for (let hour = 0; hour <= 24; hour += 3) {
       const x = minuteToX(hour * 60, plot);
-      lines.push(svg`<line class="grid" x1=${x} y1=${plot.top} x2=${x}
-                          y2=${plot.top + plot.height} />`);
-      if (lane === "colour") {
-        lines.push(svg`<text class="axis-label" x=${x} y=${plot.top + plot.height + 16}
-                             text-anchor="middle">${String(hour).padStart(2, "0")}</text>`);
+      out.push(svg`<line class="grid" x1=${x} y1=${plot.top} x2=${x}
+                         y2=${plot.top + plot.height} />`);
+      if (labels) {
+        out.push(svg`<text class="axis-label" x=${x} y=${plot.top + plot.height + 16}
+                           text-anchor="middle">${String(hour).padStart(2, "0")}</text>`);
       }
     }
-    const labels =
-      lane === "brightness"
-        ? [
-            { value: 100, y: brightnessToY(100, plot), text: "100%" },
-            { value: 50, y: brightnessToY(50, plot), text: "50%" },
-            { value: 1, y: brightnessToY(1, plot), text: "1%" },
-          ]
-        : lane === "warmth"
-          ? [
-              { value: this.maxKelvin, y: plot.top, text: `${this.maxKelvin}K` },
-              { value: this.minKelvin, y: plot.top + plot.height, text: `${this.minKelvin}K` },
-            ]
-          : [
-              { value: 360, y: plot.top, text: "360°" },
-              { value: 0, y: plot.top + plot.height, text: "0°" },
-            ];
-    for (const label of labels) {
-      lines.push(svg`<text class="axis-label" x=${plot.left - 6} y=${label.y + 3}
-                           text-anchor="end">${label.text}</text>`);
-    }
-    return svg`${lines}`;
+    return svg`${out}`;
   }
 
-  /** The gradient strip under each lane, drawn from the engine's own colours. */
-  private renderGradientStrip(plot: Plot, lane: Lane): TemplateResult {
-    if (this.samples.length === 0) return svg``;
-    const y = plot.top + plot.height + (lane === "colour" ? 22 : 6);
-    const bars = this.samples.map((sample, index) => {
-      const next = this.samples[index + 1];
-      const x = minuteToX(sample.minute, plot);
-      const nextX = next ? minuteToX(next.minute, plot) : plot.left + plot.width;
-      const rgb = sample.rgb ?? [80, 80, 80];
-      const dim = !this.laneApplies(lane, sample);
-      return svg`<rect x=${x} y=${y} width=${Math.max(1, nextX - x)}
-                       height=${STRIP_HEIGHT - 10}
-                       fill="rgb(${rgb[0]},${rgb[1]},${rgb[2]})"
-                       opacity=${dim ? 0.25 : 1} />`;
-    });
-    return svg`<g>${bars}</g>`;
+  private renderHourLabels(plot: Plot): TemplateResult {
+    const out = [];
+    for (let hour = 0; hour <= 24; hour += 3) {
+      const x = minuteToX(hour * 60, plot);
+      out.push(svg`<text class="axis-label" x=${x} y=${plot.top + plot.height + 16}
+                         text-anchor="middle">${String(hour).padStart(2, "0")}</text>`);
+    }
+    return svg`${out}`;
   }
 
-  private renderCurve(plot: Plot, lane: Lane): TemplateResult {
-    if (this.samples.length < 2) return svg``;
-    // Split into runs so an inactive stretch is dashed rather than joined through.
-    const runs: { active: boolean; points: string[] }[] = [];
-    for (const sample of this.samples) {
-      const active = this.laneApplies(lane, sample);
-      const y = this.valueY(plot, lane, sample);
-      if (y === null) continue;
-      const point = `${minuteToX(sample.minute, plot).toFixed(1)},${y.toFixed(1)}`;
-      const tail = runs[runs.length - 1];
-      if (tail && tail.active === active) tail.points.push(point);
-      else runs.push({ active, points: [point] });
-    }
-    return svg`${runs
-      .filter((run) => run.points.length > 1)
-      .map(
-        (run) =>
-          svg`<polyline class="curve ${run.active ? "" : "muted"}"
-                        points=${run.points.join(" ")} />`
-      )}`;
-  }
-
-  private valueY(plot: Plot, lane: Lane, sample: Sample): number | null {
-    if (lane === "brightness") {
-      return sample.brightness_pct === null
-        ? null
-        : brightnessToY(sample.brightness_pct, plot);
-    }
-    if (lane === "warmth") {
-      const kelvin = sample.kelvin ?? this.minKelvin;
-      return kelvinToY(kelvin, plot, this.minKelvin, this.maxKelvin);
-    }
-    const hue = sample.hs ? sample.hs[0] : 0;
-    return plot.top + (1 - hue / 360) * plot.height;
-  }
-
-  private renderSunMarkers(plot: Plot): TemplateResult {
+  private renderSun(plot: Plot): TemplateResult {
     return svg`${Object.entries(this.sun).map(([event, info]) => {
       if (!info) return svg``;
       const x = minuteToX(info.minute, plot);
@@ -362,26 +287,23 @@ export class CurveGraph extends LitElement {
                      y2=${plot.top + plot.height} />`;
   }
 
-  /** Faint ticks where the keyframes fall.
-   *
-   *  Not handles: the lane is a drawing surface, and anything that looks draggable
-   *  invites a gesture that no longer exists. These only mark where the control
-   *  points ended up, which is otherwise invisible until you read the table.
-   */
-  private renderKeyframeTicks(plot: Plot, lane: Lane): TemplateResult {
-    return svg`${this.keyframes
-      .filter((keyframe) => this.keyframeInLane(lane, keyframe))
-      .map((keyframe) => {
-        const x = minuteToX(keyframe.minute, plot);
-        return svg`<line class="kf-tick" x1=${x} y1=${plot.top + plot.height - 8}
-                         x2=${x} y2=${plot.top + plot.height} />`;
-      })}`;
-  }
-
-  private keyframeInLane(lane: Lane, keyframe: ResolvedKeyframe): boolean {
-    if (lane === "brightness") return true;
-    if (lane === "warmth") return keyframe.mode === "kelvin";
-    return keyframe.mode === "hs";
+  private renderScrubBar(): TemplateResult {
+    const plot: Plot = {
+      left: GUTTER_LEFT, top: this.scrubTop, width: this.plotWidth, height: SCRUB_HEIGHT,
+    };
+    const handle = this.scrubMinute === null ? null : minuteToX(this.scrubMinute, plot);
+    return svg`
+      <g>
+        <rect class="scrub-bar" x=${plot.left} y=${plot.top}
+              width=${plot.width} height=${plot.height} rx=${SCRUB_HEIGHT / 2} />
+        <text class="axis-label" x=${plot.left - 6} y=${plot.top + SCRUB_HEIGHT / 2 + 3}
+              text-anchor="end">preview</text>
+        ${handle === null
+          ? ""
+          : svg`<circle class="scrub-handle" cx=${handle}
+                        cy=${plot.top + SCRUB_HEIGHT / 2} r="9" />`}
+      </g>
+    `;
   }
 
   // --- interaction ----------------------------------------------------------
@@ -396,17 +318,11 @@ export class CurveGraph extends LitElement {
     };
   }
 
-  private laneAt(y: number): Lane | null {
-    for (const lane of ["brightness", "warmth", "colour"] as Lane[]) {
-      const plot = this.plotFor(lane);
-      if (y >= plot.top - 10 && y <= plot.top + plot.height + 10) return lane;
-    }
-    return null;
-  }
-
   private onPointerDown(event: PointerEvent): void {
     const point = this.localPoint(event);
     (event.target as Element).setPointerCapture?.(event.pointerId);
+    const brightness = this.brightnessPlot;
+    const ribbon = this.ribbonPlot;
 
     if (point.y >= this.scrubTop) {
       this.scrubbing = true;
@@ -414,78 +330,81 @@ export class CurveGraph extends LitElement {
       return;
     }
 
-    const lane = this.laneAt(point.y);
-    if (!lane) return;
-    this.painting = lane;
-    this.emitPaint(lane, point);
+    if (point.y >= ribbon.top - 12 && point.y <= ribbon.top + ribbon.height + 12) {
+      const hit = hitTest(point.x, point.y, this.markers());
+      if (hit) {
+        this.draggingMarker = hit;
+        this.selectedId = hit;
+        this.emit("colour-pick", { id: hit, minute: null });
+        return;
+      }
+      // Tapping bare ribbon means "set the colour here", which may need a new
+      // keyframe. The panel decides; the graph only reports where.
+      this.emit("colour-pick", { id: null, minute: xToMinute(point.x, ribbon) });
+      return;
+    }
+
+    if (point.y >= brightness.top - 10 && point.y <= brightness.top + brightness.height + 10) {
+      this.painting = true;
+      this.emitPaint(point);
+    }
   }
 
   private onPointerMove(event: PointerEvent): void {
-    const moved = this.localPoint(event);
+    const point = this.localPoint(event);
     if (this.scrubbing) {
-      this.emitScrub(moved.x);
+      this.emitScrub(point.x);
       return;
     }
-    if (this.painting) {
-      // Clamp to the lane being painted rather than switching lanes mid-stroke:
-      // drifting a few pixels upward should not start rewriting a different
-      // channel halfway through a sweep.
-      this.emitPaint(this.painting, moved);
+    if (this.draggingMarker) {
+      const markers = Object.entries(this.sun)
+        .filter(([, info]) => info)
+        .map(([event_, info]) => ({ event: event_, minute: info!.minute }));
+      const snapped = snapToSun(xToMinute(point.x, this.ribbonPlot), markers);
+      this.emit("marker-move", {
+        id: this.draggingMarker,
+        minute: snapped.minute,
+        sunEvent: snapped.event,
+      });
+      return;
     }
+    if (this.painting) this.emitPaint(point);
   }
 
   private onPointerUp(): void {
+    if (this.draggingMarker) {
+      this.draggingMarker = null;
+      this.emit("marker-commit", {});
+      return;
+    }
     if (this.painting) {
-      const lane = this.painting;
-      this.painting = null;
-      this.dispatchEvent(
-        new CustomEvent("paint-commit", { detail: { lane }, bubbles: true, composed: true })
-      );
+      this.painting = false;
+      this.emit("paint-commit", {});
       return;
     }
     if (this.scrubbing) {
       this.scrubbing = false;
-      this.dispatchEvent(new CustomEvent("scrub-end", { bubbles: true, composed: true }));
+      this.emit("scrub-end", {});
     }
+  }
+
+  private emitPaint(point: { x: number; y: number }): void {
+    const plot = this.brightnessPlot;
+    this.emit("curve-paint", {
+      minute: xToMinute(point.x, plot),
+      value: yToBrightness(point.y, plot),
+    });
   }
 
   private emitScrub(x: number): void {
     const plot: Plot = {
-      left: GUTTER_LEFT,
-      top: this.scrubTop,
-      width: this.plotWidth,
-      height: SCRUB_HEIGHT,
+      left: GUTTER_LEFT, top: this.scrubTop, width: this.plotWidth, height: SCRUB_HEIGHT,
     };
-    this.dispatchEvent(
-      new CustomEvent("scrub", {
-        detail: { minute: xToMinute(x, plot) },
-        bubbles: true,
-        composed: true,
-      })
-    );
+    this.emit("scrub", { minute: xToMinute(x, plot) });
   }
 
-  /** Report where the cursor is, in this lane's own units. The panel owns the
-   *  sample data and records the stroke; the graph stays a view. */
-  private emitPaint(lane: Lane, point: { x: number; y: number }): void {
-    const plot = this.plotFor(lane);
-    const minute = xToMinute(point.x, plot);
-    let value: number;
-    if (lane === "brightness") {
-      value = yToBrightness(point.y, plot);
-    } else if (lane === "warmth") {
-      value = yToKelvin(point.y, plot, this.minKelvin, this.maxKelvin);
-    } else {
-      const fraction = 1 - (point.y - plot.top) / plot.height;
-      value = Math.round(Math.min(360, Math.max(0, fraction * 360)));
-    }
-    this.dispatchEvent(
-      new CustomEvent("curve-paint", {
-        detail: { lane, minute, value },
-        bubbles: true,
-        composed: true,
-      })
-    );
+  private emit(name: string, detail: Record<string, unknown>): void {
+    this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
   }
 }
 

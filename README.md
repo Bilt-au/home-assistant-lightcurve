@@ -68,39 +68,29 @@ does not also freeze their colour for the rest of the evening.
 
 **Settings → sidebar → Lightcurve** opens a three-lane graph of the selected profile.
 
-**Brightness** is independent and always editable. **Warmth** and **Colour** are the
-same channel — a keyframe holds a colour temperature *or* a hue, never both, because
-a bulb cannot be 3000 K and red simultaneously — so each lane is greyed where the
-curve is in the other mode. Two freely editable lanes would imply a state the
-hardware cannot enter.
+The graph has two parts.
 
-- **Drag across a lane to draw it.** Every moment your cursor passes takes its
-  height, live. Release and the keyframes are rebuilt from what you drew; the part of
-  the day you did not paint over is left exactly as it was.
-- **A keyframe pinned to the sun stays pinned** when you paint over it. Only its value
-  changes, so it keeps tracking sunrise rather than silently becoming a fixed time and
-  drifting out of correctness over the following months.
-- **The strip beneath the lanes scrubs**, and the selected room's real bulbs follow
-  that time of day. Releasing returns them to the curve.
-- **The colour brush has a saturation control.** Hue comes from how high you drag;
-  saturation is set separately, because without it every painted colour is fully
-  saturated and a deep orange cannot be distinguished from a washed pastel one.
-- **Click a swatch in the keyframe table** to set that keyframe's colour exactly,
-  with a wheel for colours or a slider for colour temperature, and to switch a
-  keyframe between white and colour. Dragging is good for a sweep and useless for
-  "this precise orange", which is what a long coloured section needs.
-- Faint ticks mark where the keyframes fell. They are not handles — the lane is a
-  drawing surface, and anything that looks draggable invites a gesture that no longer
-  exists. Use the keyframe table below for precise edits.
-- **The gradient strip** under each lane is drawn from colours the engine computed,
-  not the browser's guess at what 2700 K looks like.
+**Brightness** is a lane you draw on: drag across it and every moment your cursor
+passes takes its height.
 
-The panel also carries a button per look, so Mood, Movie and Disco can be triggered
-without reaching for Siri or building a dashboard card. A look that is currently
-holding is outlined, and **Back to curve** releases every room without needing to
-switch anything off and on. They are labelled *looks* rather than themes because Home
-Assistant already uses "Themes" for frontend appearance, and two unrelated things
-sharing a word in the same interface is worse than an unfamiliar one.
+**Colour** is a ribbon showing the colour the lights will actually be, all day. Tap it
+at any time to set the colour there — one picker offering both whites, as a colour
+temperature, and colours, on a hue and saturation wheel. Tapping bare ribbon creates a
+keyframe carrying the colour already showing there, so you never have to think about
+keyframes to change a colour. Drag a marker to move it in time, or onto a sun line to
+make it follow sunrise or sunset.
+
+An earlier version split this into three lanes — brightness, warmth and colour — with
+warmth and colour greyed out according to which mode the curve was in, because a
+keyframe holds a colour temperature *or* a hue and never both. That was accurate about
+the data and wrong about the question people ask, which is just "what colour is the
+light at seven?" Whether the answer is a white or an orange is an implementation
+detail, and surfacing it meant a colour could not be set without first understanding
+the model.
+
+Every keyframe is also listed as an editable row below: time, what it resolves to
+today, colour, brightness and easing. Dragging is good for shape and hopeless for
+"make this exactly 06:30".
 
 Validation runs as you edit and samples the whole year, because the failures that
 matter here are seasonal: a profile that is fine in September can have two keyframes

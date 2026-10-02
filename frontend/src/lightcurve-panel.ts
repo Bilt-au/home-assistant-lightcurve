@@ -54,9 +54,6 @@ export class LightcurvePanel extends LitElement {
   @state() private editingTheme: Theme | null = null;
   /** Which rooms a theme press should reach. Empty means whatever it covers. */
   @state() private themeTarget: string[] = [];
-  /** Saturation the colour lane paints with. Hue comes from the cursor height; this
-   *  is the other half, and without it a painted colour is always fully saturated. */
-  @state() private paintSaturation = 90;
   /** Which keyframe's colour is being picked, if any. */
   @state() private colourPickFor: string | null = null;
   @state() private profile: Profile | null = null;
@@ -481,11 +478,8 @@ export class LightcurvePanel extends LitElement {
    *  keyframes once, on release.
    */
   private onPaint = (event: CustomEvent): void => {
-    const { lane, minute, value } = event.detail as {
-      lane: Lane;
-      minute: number;
-      value: number;
-    };
+    const { minute, value } = event.detail as { minute: number; value: number };
+    const lane: Lane = "brightness";
     this.stroke = extendStroke(this.stroke ?? newStroke(), minute, value);
 
     const points: Point[] = this.samples.map((sample) => ({
@@ -494,20 +488,20 @@ export class LightcurvePanel extends LitElement {
     }));
     const painted = applyStroke(points, this.stroke);
     this.samples = this.samples.map((sample, index) =>
-      withLaneValue(sample, lane, painted[index].value, this.paintSaturation)
+      withLaneValue(sample, lane, painted[index].value)
     );
     this.dirty = true;
   };
 
   /** On release, fold the painted span back into keyframes and re-evaluate. */
-  private onPaintCommit = (event: CustomEvent): void => {
+  private onPaintCommit = (): void => {
     const stroke = this.stroke;
     this.stroke = null;
     if (!this.profile || !stroke) return;
     const span = strokeSpan(stroke);
     if (!span) return;
 
-    const lane = (event.detail as { lane: Lane }).lane;
+    const lane: Lane = "brightness";
     const points: Point[] = this.samples.map((sample) => ({
       minute: sample.minute,
       value: laneValue(sample, lane),
@@ -517,14 +511,81 @@ export class LightcurvePanel extends LitElement {
       this.resolved,
       lane,
       points,
-      { kind: "span", ...span },
-      undefined,
-      lane === "colour" ? this.paintSaturation : undefined
+      { kind: "span", ...span }
     );
     this.profile = {
       ...this.profile,
       variants: { ...this.profile.variants, [this.variant]: { keyframes } },
     };
+    void this.refreshGraph();
+  };
+
+  /** Tapping the colour ribbon.
+   *
+   *  On a marker, open that keyframe. On bare ribbon, there is no keyframe at that
+   *  moment yet — so one is created carrying the colour already showing there, and
+   *  the picker opens on it. Without that, "set the colour at seven" would first
+   *  require knowing that keyframes exist at all.
+   */
+  private onColourPick = (event: CustomEvent): void => {
+    const { id, minute } = event.detail as { id: string | null; minute: number | null };
+    if (id) {
+      this.selectedId = id;
+      this.colourPickFor = id;
+      return;
+    }
+    if (minute === null || !this.profile) return;
+
+    const existing = this.resolved.find((r) => Math.abs(r.minute - minute) <= 10);
+    if (existing) {
+      this.selectedId = existing.id;
+      this.colourPickFor = existing.id;
+      return;
+    }
+
+    const here = this.samples.reduce(
+      (best, sample) =>
+        Math.abs(sample.minute - minute) < Math.abs(best.minute - minute) ? sample : best,
+      this.samples[0]
+    );
+    const newId = `k_${Math.random().toString(36).slice(2, 8)}`;
+    const keyframes = [
+      ...this.keyframes,
+      {
+        id: newId,
+        time: { type: "fixed" as const, value: formatMinute(minute) },
+        colour:
+          here?.mode === "hs" && here.hs
+            ? { mode: "hs" as const, hs: here.hs }
+            : { mode: "kelvin" as const, kelvin: here?.kelvin ?? 2700 },
+        brightness: here?.brightness_pct ?? 50,
+        easing: "ease_in_out" as const,
+      },
+    ];
+    this.profile = {
+      ...this.profile,
+      variants: { ...this.profile.variants, [this.variant]: { keyframes } },
+    };
+    this.selectedId = newId;
+    this.colourPickFor = newId;
+    this.dirty = true;
+    void this.refreshGraph();
+  };
+
+  private onMarkerMove = (event: CustomEvent): void => {
+    const { id, minute, sunEvent } = event.detail as {
+      id: string;
+      minute: number;
+      sunEvent: string | null;
+    };
+    this.mutate(id, (keyframe) => {
+      keyframe.time = sunEvent
+        ? { type: "sun", event: sunEvent, offset_min: 0 }
+        : { type: "fixed", value: formatMinute(minute) };
+    });
+  };
+
+  private onMarkerCommit = (): void => {
     void this.refreshGraph();
   };
 
@@ -886,36 +947,20 @@ export class LightcurvePanel extends LitElement {
           @keyframe-select=${this.onSelect}
           @curve-paint=${this.onPaint}
           @paint-commit=${this.onPaintCommit}
+          @colour-pick=${this.onColourPick}
+          @marker-move=${this.onMarkerMove}
+          @marker-commit=${this.onMarkerCommit}
           @scrub=${this.onScrub}
           @scrub-end=${this.onScrubEnd}
         ></lightcurve-curve-graph>
-        <div class="brush">
-          <span class="inline-label">Colour lane paints</span>
-          <span
-            class="swatch inline big"
-            style="background:${hsToCss(30, this.paintSaturation)}"
-          ></span>
-          <label class="inline-label" for="sat">saturation ${this.paintSaturation}%</label>
-          <input
-            id="sat"
-            type="range"
-            min="0"
-            max="100"
-            .value=${String(this.paintSaturation)}
-            @input=${(e: Event) => {
-              this.paintSaturation = Number((e.target as HTMLInputElement).value);
-            }}
-          />
-          <span class="hint">
-            Hue comes from how high you drag; this sets how strong the colour is.
-            Low values give a washed, pastel light; 100% is fully saturated.
-          </span>
-        </div>
         <p class="hint">
-          Drag across a lane to draw it: every moment your cursor passes takes its
-          height. Keyframes are rebuilt from what you drew, and the ones you did not
-          paint over are left alone. The strip at the bottom previews a time of day
-          on ${group ? group.name : "the selected room"}.
+          <strong>Brightness:</strong> drag across it to draw — every moment your
+          cursor passes takes its height.
+          <strong>Colour:</strong> tap the ribbon at any time of day to set the
+          colour there, white or coloured; drag a marker to move it in time, or onto
+          a sun line to make it follow sunrise or sunset.
+          The strip at the bottom previews a time of day on
+          ${group ? group.name : "the selected room"}.
         </p>
       </div>
 
@@ -1273,12 +1318,11 @@ export class LightcurvePanel extends LitElement {
   private renderKeyframeColour(keyframeId: string): TemplateResult {
     const keyframe = this.keyframes.find((k) => k.id === keyframeId);
     if (!keyframe) return html`${nothing}`;
+    const resolved = this.resolved.find((r) => r.id === keyframeId);
     const hs = keyframe.colour.hs ?? [30, 90];
     return html`
       <div class="editor">
-        <h3>Colour at ${this.resolved.find((r) => r.id === keyframeId)
-          ? formatMinute(this.resolved.find((r) => r.id === keyframeId)!.minute)
-          : keyframeId}</h3>
+        <h3>Colour at ${resolved ? formatMinute(resolved.minute) : keyframeId}</h3>
         <div class="row">
           <div>
             <label for="kf-mode">Type</label>

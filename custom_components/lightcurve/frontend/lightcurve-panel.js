@@ -3,18 +3,18 @@
  * Copyright 2019 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const Z = globalThis, pt = Z.ShadowRoot && (Z.ShadyCSS === void 0 || Z.ShadyCSS.nativeShadow) && "adoptedStyleSheets" in Document.prototype && "replace" in CSSStyleSheet.prototype, ft = Symbol(), xt = /* @__PURE__ */ new WeakMap();
-let Gt = class {
+const Z = globalThis, ht = Z.ShadowRoot && (Z.ShadyCSS === void 0 || Z.ShadyCSS.nativeShadow) && "adoptedStyleSheets" in Document.prototype && "replace" in CSSStyleSheet.prototype, ct = Symbol(), bt = /* @__PURE__ */ new WeakMap();
+let Ht = class {
   constructor(t, i, s) {
-    if (this._$cssResult$ = !0, s !== ft) throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");
+    if (this._$cssResult$ = !0, s !== ct) throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");
     this.cssText = t, this.t = i;
   }
   get styleSheet() {
     let t = this.o;
     const i = this.t;
-    if (pt && t === void 0) {
+    if (ht && t === void 0) {
       const s = i !== void 0 && i.length === 1;
-      s && (t = xt.get(i)), t === void 0 && ((this.o = t = new CSSStyleSheet()).replaceSync(this.cssText), s && xt.set(i, t));
+      s && (t = bt.get(i)), t === void 0 && ((this.o = t = new CSSStyleSheet()).replaceSync(this.cssText), s && bt.set(i, t));
     }
     return t;
   }
@@ -22,33 +22,33 @@ let Gt = class {
     return this.cssText;
   }
 };
-const Wt = (e) => new Gt(typeof e == "string" ? e : e + "", void 0, ft), mt = (e, ...t) => {
+const Ft = (e) => new Ht(typeof e == "string" ? e : e + "", void 0, ct), dt = (e, ...t) => {
   const i = e.length === 1 ? e[0] : t.reduce((s, r, o) => s + ((n) => {
     if (n._$cssResult$ === !0) return n.cssText;
     if (typeof n == "number") return n;
     throw Error("Value passed to 'css' function must be a 'css' function result: " + n + ". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.");
   })(r) + e[o + 1], e[0]);
-  return new Gt(i, e, ft);
-}, Jt = (e, t) => {
-  if (pt) e.adoptedStyleSheets = t.map((i) => i instanceof CSSStyleSheet ? i : i.styleSheet);
+  return new Ht(i, e, ct);
+}, Wt = (e, t) => {
+  if (ht) e.adoptedStyleSheets = t.map((i) => i instanceof CSSStyleSheet ? i : i.styleSheet);
   else for (const i of t) {
     const s = document.createElement("style"), r = Z.litNonce;
     r !== void 0 && s.setAttribute("nonce", r), s.textContent = i.cssText, e.appendChild(s);
   }
-}, wt = pt ? (e) => e : (e) => e instanceof CSSStyleSheet ? ((t) => {
+}, $t = ht ? (e) => e : (e) => e instanceof CSSStyleSheet ? ((t) => {
   let i = "";
   for (const s of t.cssRules) i += s.cssText;
-  return Wt(i);
+  return Ft(i);
 })(e) : e;
 /**
  * @license
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const { is: Vt, defineProperty: qt, getOwnPropertyDescriptor: Yt, getOwnPropertyNames: Xt, getOwnPropertySymbols: Zt, getPrototypeOf: Qt } = Object, rt = globalThis, _t = rt.trustedTypes, te = _t ? _t.emptyScript : "", ee = rt.reactiveElementPolyfillSupport, j = (e, t) => e, et = { toAttribute(e, t) {
+const { is: Jt, defineProperty: Vt, getOwnPropertyDescriptor: qt, getOwnPropertyNames: Xt, getOwnPropertySymbols: Yt, getPrototypeOf: Zt } = Object, rt = globalThis, yt = rt.trustedTypes, Qt = yt ? yt.emptyScript : "", te = rt.reactiveElementPolyfillSupport, K = (e, t) => e, et = { toAttribute(e, t) {
   switch (t) {
     case Boolean:
-      e = e ? te : null;
+      e = e ? Qt : null;
       break;
     case Object:
     case Array:
@@ -73,23 +73,23 @@ const { is: Vt, defineProperty: qt, getOwnPropertyDescriptor: Yt, getOwnProperty
       }
   }
   return i;
-} }, vt = (e, t) => !Vt(e, t), St = { attribute: !0, type: String, converter: et, reflect: !1, useDefault: !1, hasChanged: vt };
+} }, ut = (e, t) => !Jt(e, t), xt = { attribute: !0, type: String, converter: et, reflect: !1, useDefault: !1, hasChanged: ut };
 Symbol.metadata ??= Symbol("metadata"), rt.litPropertyMetadata ??= /* @__PURE__ */ new WeakMap();
-let U = class extends HTMLElement {
+let R = class extends HTMLElement {
   static addInitializer(t) {
     this._$Ei(), (this.l ??= []).push(t);
   }
   static get observedAttributes() {
     return this.finalize(), this._$Eh && [...this._$Eh.keys()];
   }
-  static createProperty(t, i = St) {
+  static createProperty(t, i = xt) {
     if (i.state && (i.attribute = !1), this._$Ei(), this.prototype.hasOwnProperty(t) && ((i = Object.create(i)).wrapped = !0), this.elementProperties.set(t, i), !i.noAccessor) {
       const s = Symbol(), r = this.getPropertyDescriptor(t, s, i);
-      r !== void 0 && qt(this.prototype, t, r);
+      r !== void 0 && Vt(this.prototype, t, r);
     }
   }
   static getPropertyDescriptor(t, i, s) {
-    const { get: r, set: o } = Yt(this.prototype, t) ?? { get() {
+    const { get: r, set: o } = qt(this.prototype, t) ?? { get() {
       return this[i];
     }, set(n) {
       this[i] = n;
@@ -100,17 +100,17 @@ let U = class extends HTMLElement {
     }, configurable: !0, enumerable: !0 };
   }
   static getPropertyOptions(t) {
-    return this.elementProperties.get(t) ?? St;
+    return this.elementProperties.get(t) ?? xt;
   }
   static _$Ei() {
-    if (this.hasOwnProperty(j("elementProperties"))) return;
-    const t = Qt(this);
+    if (this.hasOwnProperty(K("elementProperties"))) return;
+    const t = Zt(this);
     t.finalize(), t.l !== void 0 && (this.l = [...t.l]), this.elementProperties = new Map(t.elementProperties);
   }
   static finalize() {
-    if (this.hasOwnProperty(j("finalized"))) return;
-    if (this.finalized = !0, this._$Ei(), this.hasOwnProperty(j("properties"))) {
-      const i = this.properties, s = [...Xt(i), ...Zt(i)];
+    if (this.hasOwnProperty(K("finalized"))) return;
+    if (this.finalized = !0, this._$Ei(), this.hasOwnProperty(K("properties"))) {
+      const i = this.properties, s = [...Xt(i), ...Yt(i)];
       for (const r of s) this.createProperty(r, i[r]);
     }
     const t = this[Symbol.metadata];
@@ -129,8 +129,8 @@ let U = class extends HTMLElement {
     const i = [];
     if (Array.isArray(t)) {
       const s = new Set(t.flat(1 / 0).reverse());
-      for (const r of s) i.unshift(wt(r));
-    } else t !== void 0 && i.push(wt(t));
+      for (const r of s) i.unshift($t(r));
+    } else t !== void 0 && i.push($t(t));
     return i;
   }
   static _$Eu(t, i) {
@@ -156,7 +156,7 @@ let U = class extends HTMLElement {
   }
   createRenderRoot() {
     const t = this.shadowRoot ?? this.attachShadow(this.constructor.shadowRootOptions);
-    return Jt(t, this.constructor.elementStyles), t;
+    return Wt(t, this.constructor.elementStyles), t;
   }
   connectedCallback() {
     this.renderRoot ??= this.createRenderRoot(), this.enableUpdating(!0), this._$EO?.forEach((t) => t.hostConnected?.());
@@ -188,7 +188,7 @@ let U = class extends HTMLElement {
   requestUpdate(t, i, s, r = !1, o) {
     if (t !== void 0) {
       const n = this.constructor;
-      if (r === !1 && (o = this[t]), s ??= n.getPropertyOptions(t), !((s.hasChanged ?? vt)(o, i) || s.useDefault && s.reflect && o === this._$Ej?.get(t) && !this.hasAttribute(n._$Eu(t, s)))) return;
+      if (r === !1 && (o = this[t]), s ??= n.getPropertyOptions(t), !((s.hasChanged ?? ut)(o, i) || s.useDefault && s.reflect && o === this._$Ej?.get(t) && !this.hasAttribute(n._$Eu(t, s)))) return;
       this.C(t, i, s);
     }
     this.isUpdatePending === !1 && (this._$ES = this._$EP());
@@ -256,75 +256,75 @@ let U = class extends HTMLElement {
   firstUpdated(t) {
   }
 };
-U.elementStyles = [], U.shadowRootOptions = { mode: "open" }, U[j("elementProperties")] = /* @__PURE__ */ new Map(), U[j("finalized")] = /* @__PURE__ */ new Map(), ee?.({ ReactiveElement: U }), (rt.reactiveElementVersions ??= []).push("2.1.2");
+R.elementStyles = [], R.shadowRootOptions = { mode: "open" }, R[K("elementProperties")] = /* @__PURE__ */ new Map(), R[K("finalized")] = /* @__PURE__ */ new Map(), te?.({ ReactiveElement: R }), (rt.reactiveElementVersions ??= []).push("2.1.2");
 /**
  * @license
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const gt = globalThis, At = (e) => e, it = gt.trustedTypes, kt = it ? it.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, zt = "$lit$", T = `lit$${Math.random().toFixed(9).slice(2)}$`, Kt = "?" + T, ie = `<${Kt}>`, R = document, B = () => R.createComment(""), F = (e) => e === null || typeof e != "object" && typeof e != "function", $t = Array.isArray, se = (e) => $t(e) || typeof e?.[Symbol.iterator] == "function", ht = `[ 	
-\f\r]`, L = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, Mt = /-->/g, Pt = />/g, E = RegExp(`>|${ht}(?:([^\\s"'>=/]+)(${ht}*=${ht}*(?:[^ 	
-\f\r"'\`<>=]|("|')|))|$)`, "g"), Tt = /'/g, Et = /"/g, Lt = /^(?:script|style|textarea|title)$/i, jt = (e) => (t, ...i) => ({ _$litType$: e, strings: t, values: i }), c = jt(1), m = jt(2), D = Symbol.for("lit-noChange"), d = Symbol.for("lit-nothing"), Ct = /* @__PURE__ */ new WeakMap(), N = R.createTreeWalker(R, 129);
-function Bt(e, t) {
-  if (!$t(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
-  return kt !== void 0 ? kt.createHTML(t) : t;
+const pt = globalThis, wt = (e) => e, it = pt.trustedTypes, _t = it ? it.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, Dt = "$lit$", E = `lit$${Math.random().toFixed(9).slice(2)}$`, Gt = "?" + E, ee = `<${Gt}>`, I = document, F = () => I.createComment(""), W = (e) => e === null || typeof e != "object" && typeof e != "function", ft = Array.isArray, ie = (e) => ft(e) || typeof e?.[Symbol.iterator] == "function", lt = `[ 	
+\f\r]`, B = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, kt = /-->/g, St = />/g, C = RegExp(`>|${lt}(?:([^\\s"'>=/]+)(${lt}*=${lt}*(?:[^ 	
+\f\r"'\`<>=]|("|')|))|$)`, "g"), At = /'/g, Pt = /"/g, zt = /^(?:script|style|textarea|title)$/i, Bt = (e) => (t, ...i) => ({ _$litType$: e, strings: t, values: i }), h = Bt(1), b = Bt(2), H = Symbol.for("lit-noChange"), d = Symbol.for("lit-nothing"), Mt = /* @__PURE__ */ new WeakMap(), N = I.createTreeWalker(I, 129);
+function jt(e, t) {
+  if (!ft(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
+  return _t !== void 0 ? _t.createHTML(t) : t;
 }
-const re = (e, t) => {
+const se = (e, t) => {
   const i = e.length - 1, s = [];
-  let r, o = t === 2 ? "<svg>" : t === 3 ? "<math>" : "", n = L;
+  let r, o = t === 2 ? "<svg>" : t === 3 ? "<math>" : "", n = B;
   for (let a = 0; a < i; a++) {
     const l = e[a];
-    let h, f, u = -1, _ = 0;
-    for (; _ < l.length && (n.lastIndex = _, f = n.exec(l), f !== null); ) _ = n.lastIndex, n === L ? f[1] === "!--" ? n = Mt : f[1] !== void 0 ? n = Pt : f[2] !== void 0 ? (Lt.test(f[2]) && (r = RegExp("</" + f[2], "g")), n = E) : f[3] !== void 0 && (n = E) : n === E ? f[0] === ">" ? (n = r ?? L, u = -1) : f[1] === void 0 ? u = -2 : (u = n.lastIndex - f[2].length, h = f[1], n = f[3] === void 0 ? E : f[3] === '"' ? Et : Tt) : n === Et || n === Tt ? n = E : n === Mt || n === Pt ? n = L : (n = E, r = void 0);
-    const A = n === E && e[a + 1].startsWith("/>") ? " " : "";
-    o += n === L ? l + ie : u >= 0 ? (s.push(h), l.slice(0, u) + zt + l.slice(u) + T + A) : l + T + (u === -2 ? a : A);
+    let c, f, u = -1, w = 0;
+    for (; w < l.length && (n.lastIndex = w, f = n.exec(l), f !== null); ) w = n.lastIndex, n === B ? f[1] === "!--" ? n = kt : f[1] !== void 0 ? n = St : f[2] !== void 0 ? (zt.test(f[2]) && (r = RegExp("</" + f[2], "g")), n = C) : f[3] !== void 0 && (n = C) : n === C ? f[0] === ">" ? (n = r ?? B, u = -1) : f[1] === void 0 ? u = -2 : (u = n.lastIndex - f[2].length, c = f[1], n = f[3] === void 0 ? C : f[3] === '"' ? Pt : At) : n === Pt || n === At ? n = C : n === kt || n === St ? n = B : (n = C, r = void 0);
+    const A = n === C && e[a + 1].startsWith("/>") ? " " : "";
+    o += n === B ? l + ee : u >= 0 ? (s.push(c), l.slice(0, u) + Dt + l.slice(u) + E + A) : l + E + (u === -2 ? a : A);
   }
-  return [Bt(e, o + (e[i] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), s];
+  return [jt(e, o + (e[i] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), s];
 };
-class W {
+class J {
   constructor({ strings: t, _$litType$: i }, s) {
     let r;
     this.parts = [];
     let o = 0, n = 0;
-    const a = t.length - 1, l = this.parts, [h, f] = re(t, i);
-    if (this.el = W.createElement(h, s), N.currentNode = this.el.content, i === 2 || i === 3) {
+    const a = t.length - 1, l = this.parts, [c, f] = se(t, i);
+    if (this.el = J.createElement(c, s), N.currentNode = this.el.content, i === 2 || i === 3) {
       const u = this.el.content.firstChild;
       u.replaceWith(...u.childNodes);
     }
     for (; (r = N.nextNode()) !== null && l.length < a; ) {
       if (r.nodeType === 1) {
-        if (r.hasAttributes()) for (const u of r.getAttributeNames()) if (u.endsWith(zt)) {
-          const _ = f[n++], A = r.getAttribute(u).split(T), M = /([.?@])?(.*)/.exec(_);
-          l.push({ type: 1, index: o, name: M[2], strings: A, ctor: M[1] === "." ? ne : M[1] === "?" ? ae : M[1] === "@" ? le : ot }), r.removeAttribute(u);
-        } else u.startsWith(T) && (l.push({ type: 6, index: o }), r.removeAttribute(u));
-        if (Lt.test(r.tagName)) {
-          const u = r.textContent.split(T), _ = u.length - 1;
-          if (_ > 0) {
+        if (r.hasAttributes()) for (const u of r.getAttributeNames()) if (u.endsWith(Dt)) {
+          const w = f[n++], A = r.getAttribute(u).split(E), M = /([.?@])?(.*)/.exec(w);
+          l.push({ type: 1, index: o, name: M[2], strings: A, ctor: M[1] === "." ? oe : M[1] === "?" ? ne : M[1] === "@" ? ae : ot }), r.removeAttribute(u);
+        } else u.startsWith(E) && (l.push({ type: 6, index: o }), r.removeAttribute(u));
+        if (zt.test(r.tagName)) {
+          const u = r.textContent.split(E), w = u.length - 1;
+          if (w > 0) {
             r.textContent = it ? it.emptyScript : "";
-            for (let A = 0; A < _; A++) r.append(u[A], B()), N.nextNode(), l.push({ type: 2, index: ++o });
-            r.append(u[_], B());
+            for (let A = 0; A < w; A++) r.append(u[A], F()), N.nextNode(), l.push({ type: 2, index: ++o });
+            r.append(u[w], F());
           }
         }
-      } else if (r.nodeType === 8) if (r.data === Kt) l.push({ type: 2, index: o });
+      } else if (r.nodeType === 8) if (r.data === Gt) l.push({ type: 2, index: o });
       else {
         let u = -1;
-        for (; (u = r.data.indexOf(T, u + 1)) !== -1; ) l.push({ type: 7, index: o }), u += T.length - 1;
+        for (; (u = r.data.indexOf(E, u + 1)) !== -1; ) l.push({ type: 7, index: o }), u += E.length - 1;
       }
       o++;
     }
   }
   static createElement(t, i) {
-    const s = R.createElement("template");
+    const s = I.createElement("template");
     return s.innerHTML = t, s;
   }
 }
-function G(e, t, i = e, s) {
-  if (t === D) return t;
+function D(e, t, i = e, s) {
+  if (t === H) return t;
   let r = s !== void 0 ? i._$Co?.[s] : i._$Cl;
-  const o = F(t) ? void 0 : t._$litDirective$;
-  return r?.constructor !== o && (r?._$AO?.(!1), o === void 0 ? r = void 0 : (r = new o(e), r._$AT(e, i, s)), s !== void 0 ? (i._$Co ??= [])[s] = r : i._$Cl = r), r !== void 0 && (t = G(e, r._$AS(e, t.values), r, s)), t;
+  const o = W(t) ? void 0 : t._$litDirective$;
+  return r?.constructor !== o && (r?._$AO?.(!1), o === void 0 ? r = void 0 : (r = new o(e), r._$AT(e, i, s)), s !== void 0 ? (i._$Co ??= [])[s] = r : i._$Cl = r), r !== void 0 && (t = D(e, r._$AS(e, t.values), r, s)), t;
 }
-class oe {
+class re {
   constructor(t, i) {
     this._$AV = [], this._$AN = void 0, this._$AD = t, this._$AM = i;
   }
@@ -335,24 +335,24 @@ class oe {
     return this._$AM._$AU;
   }
   u(t) {
-    const { el: { content: i }, parts: s } = this._$AD, r = (t?.creationScope ?? R).importNode(i, !0);
+    const { el: { content: i }, parts: s } = this._$AD, r = (t?.creationScope ?? I).importNode(i, !0);
     N.currentNode = r;
     let o = N.nextNode(), n = 0, a = 0, l = s[0];
     for (; l !== void 0; ) {
       if (n === l.index) {
-        let h;
-        l.type === 2 ? h = new J(o, o.nextSibling, this, t) : l.type === 1 ? h = new l.ctor(o, l.name, l.strings, this, t) : l.type === 6 && (h = new he(o, this, t)), this._$AV.push(h), l = s[++a];
+        let c;
+        l.type === 2 ? c = new V(o, o.nextSibling, this, t) : l.type === 1 ? c = new l.ctor(o, l.name, l.strings, this, t) : l.type === 6 && (c = new le(o, this, t)), this._$AV.push(c), l = s[++a];
       }
       n !== l?.index && (o = N.nextNode(), n++);
     }
-    return N.currentNode = R, r;
+    return N.currentNode = I, r;
   }
   p(t) {
     let i = 0;
     for (const s of this._$AV) s !== void 0 && (s.strings !== void 0 ? (s._$AI(t, s, i), i += s.strings.length - 2) : s._$AI(t[i])), i++;
   }
 }
-class J {
+class V {
   get _$AU() {
     return this._$AM?._$AU ?? this._$Cv;
   }
@@ -371,7 +371,7 @@ class J {
     return this._$AB;
   }
   _$AI(t, i = this) {
-    t = G(this, t, i), F(t) ? t === d || t == null || t === "" ? (this._$AH !== d && this._$AR(), this._$AH = d) : t !== this._$AH && t !== D && this._(t) : t._$litType$ !== void 0 ? this.$(t) : t.nodeType !== void 0 ? this.T(t) : se(t) ? this.k(t) : this._(t);
+    t = D(this, t, i), W(t) ? t === d || t == null || t === "" ? (this._$AH !== d && this._$AR(), this._$AH = d) : t !== this._$AH && t !== H && this._(t) : t._$litType$ !== void 0 ? this.$(t) : t.nodeType !== void 0 ? this.T(t) : ie(t) ? this.k(t) : this._(t);
   }
   O(t) {
     return this._$AA.parentNode.insertBefore(t, this._$AB);
@@ -380,31 +380,31 @@ class J {
     this._$AH !== t && (this._$AR(), this._$AH = this.O(t));
   }
   _(t) {
-    this._$AH !== d && F(this._$AH) ? this._$AA.nextSibling.data = t : this.T(R.createTextNode(t)), this._$AH = t;
+    this._$AH !== d && W(this._$AH) ? this._$AA.nextSibling.data = t : this.T(I.createTextNode(t)), this._$AH = t;
   }
   $(t) {
-    const { values: i, _$litType$: s } = t, r = typeof s == "number" ? this._$AC(t) : (s.el === void 0 && (s.el = W.createElement(Bt(s.h, s.h[0]), this.options)), s);
+    const { values: i, _$litType$: s } = t, r = typeof s == "number" ? this._$AC(t) : (s.el === void 0 && (s.el = J.createElement(jt(s.h, s.h[0]), this.options)), s);
     if (this._$AH?._$AD === r) this._$AH.p(i);
     else {
-      const o = new oe(r, this), n = o.u(this.options);
+      const o = new re(r, this), n = o.u(this.options);
       o.p(i), this.T(n), this._$AH = o;
     }
   }
   _$AC(t) {
-    let i = Ct.get(t.strings);
-    return i === void 0 && Ct.set(t.strings, i = new W(t)), i;
+    let i = Mt.get(t.strings);
+    return i === void 0 && Mt.set(t.strings, i = new J(t)), i;
   }
   k(t) {
-    $t(this._$AH) || (this._$AH = [], this._$AR());
+    ft(this._$AH) || (this._$AH = [], this._$AR());
     const i = this._$AH;
     let s, r = 0;
-    for (const o of t) r === i.length ? i.push(s = new J(this.O(B()), this.O(B()), this, this.options)) : s = i[r], s._$AI(o), r++;
+    for (const o of t) r === i.length ? i.push(s = new V(this.O(F()), this.O(F()), this, this.options)) : s = i[r], s._$AI(o), r++;
     r < i.length && (this._$AR(s && s._$AB.nextSibling, r), i.length = r);
   }
   _$AR(t = this._$AA.nextSibling, i) {
     for (this._$AP?.(!1, !0, i); t !== this._$AB; ) {
-      const s = At(t).nextSibling;
-      At(t).remove(), t = s;
+      const s = wt(t).nextSibling;
+      wt(t).remove(), t = s;
     }
   }
   setConnected(t) {
@@ -424,11 +424,11 @@ class ot {
   _$AI(t, i = this, s, r) {
     const o = this.strings;
     let n = !1;
-    if (o === void 0) t = G(this, t, i, 0), n = !F(t) || t !== this._$AH && t !== D, n && (this._$AH = t);
+    if (o === void 0) t = D(this, t, i, 0), n = !W(t) || t !== this._$AH && t !== H, n && (this._$AH = t);
     else {
       const a = t;
-      let l, h;
-      for (t = o[0], l = 0; l < o.length - 1; l++) h = G(this, a[s + l], i, l), h === D && (h = this._$AH[l]), n ||= !F(h) || h !== this._$AH[l], h === d ? t = d : t !== d && (t += (h ?? "") + o[l + 1]), this._$AH[l] = h;
+      let l, c;
+      for (t = o[0], l = 0; l < o.length - 1; l++) c = D(this, a[s + l], i, l), c === H && (c = this._$AH[l]), n ||= !W(c) || c !== this._$AH[l], c === d ? t = d : t !== d && (t += (c ?? "") + o[l + 1]), this._$AH[l] = c;
     }
     n && !r && this.j(t);
   }
@@ -436,7 +436,7 @@ class ot {
     t === d ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, t ?? "");
   }
 }
-class ne extends ot {
+class oe extends ot {
   constructor() {
     super(...arguments), this.type = 3;
   }
@@ -444,7 +444,7 @@ class ne extends ot {
     this.element[this.name] = t === d ? void 0 : t;
   }
 }
-class ae extends ot {
+class ne extends ot {
   constructor() {
     super(...arguments), this.type = 4;
   }
@@ -452,12 +452,12 @@ class ae extends ot {
     this.element.toggleAttribute(this.name, !!t && t !== d);
   }
 }
-class le extends ot {
+class ae extends ot {
   constructor(t, i, s, r, o) {
     super(t, i, s, r, o), this.type = 5;
   }
   _$AI(t, i = this) {
-    if ((t = G(this, t, i, 0) ?? d) === D) return;
+    if ((t = D(this, t, i, 0) ?? d) === H) return;
     const s = this._$AH, r = t === d && s !== d || t.capture !== s.capture || t.once !== s.once || t.passive !== s.passive, o = t !== d && (s === d || r);
     r && this.element.removeEventListener(this.name, this, s), o && this.element.addEventListener(this.name, this, t), this._$AH = t;
   }
@@ -465,7 +465,7 @@ class le extends ot {
     typeof this._$AH == "function" ? this._$AH.call(this.options?.host ?? this.element, t) : this._$AH.handleEvent(t);
   }
 }
-class he {
+class le {
   constructor(t, i, s) {
     this.element = t, this.type = 6, this._$AN = void 0, this._$AM = i, this.options = s;
   }
@@ -473,17 +473,17 @@ class he {
     return this._$AM._$AU;
   }
   _$AI(t) {
-    G(this, t);
+    D(this, t);
   }
 }
-const ce = gt.litHtmlPolyfillSupport;
-ce?.(W, J), (gt.litHtmlVersions ??= []).push("3.3.3");
-const de = (e, t, i) => {
+const he = pt.litHtmlPolyfillSupport;
+he?.(J, V), (pt.litHtmlVersions ??= []).push("3.3.3");
+const ce = (e, t, i) => {
   const s = i?.renderBefore ?? t;
   let r = s._$litPart$;
   if (r === void 0) {
     const o = i?.renderBefore ?? null;
-    s._$litPart$ = r = new J(t.insertBefore(B(), o), o, void 0, i ?? {});
+    s._$litPart$ = r = new V(t.insertBefore(F(), o), o, void 0, i ?? {});
   }
   return r._$AI(e), r;
 };
@@ -492,8 +492,8 @@ const de = (e, t, i) => {
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const bt = globalThis;
-class O extends U {
+const mt = globalThis;
+class O extends R {
   constructor() {
     super(...arguments), this.renderOptions = { host: this }, this._$Do = void 0;
   }
@@ -503,7 +503,7 @@ class O extends U {
   }
   update(t) {
     const i = this.render();
-    this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(t), this._$Do = de(i, this.renderRoot, this.renderOptions);
+    this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(t), this._$Do = ce(i, this.renderRoot, this.renderOptions);
   }
   connectedCallback() {
     super.connectedCallback(), this._$Do?.setConnected(!0);
@@ -512,19 +512,19 @@ class O extends U {
     super.disconnectedCallback(), this._$Do?.setConnected(!1);
   }
   render() {
-    return D;
+    return H;
   }
 }
-O._$litElement$ = !0, O.finalized = !0, bt.litElementHydrateSupport?.({ LitElement: O });
-const ue = bt.litElementPolyfillSupport;
-ue?.({ LitElement: O });
-(bt.litElementVersions ??= []).push("4.2.2");
+O._$litElement$ = !0, O.finalized = !0, mt.litElementHydrateSupport?.({ LitElement: O });
+const de = mt.litElementPolyfillSupport;
+de?.({ LitElement: O });
+(mt.litElementVersions ??= []).push("4.2.2");
 /**
  * @license
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const yt = (e) => (t, i) => {
+const gt = (e) => (t, i) => {
   i !== void 0 ? i.addInitializer(() => {
     customElements.define(e, t);
   }) : customElements.define(e, t);
@@ -534,7 +534,7 @@ const yt = (e) => (t, i) => {
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const pe = { attribute: !0, type: String, converter: et, reflect: !1, hasChanged: vt }, fe = (e = pe, t, i) => {
+const ue = { attribute: !0, type: String, converter: et, reflect: !1, hasChanged: ut }, pe = (e = ue, t, i) => {
   const { kind: s, metadata: r } = i;
   let o = globalThis.litPropertyMetadata.get(r);
   if (o === void 0 && globalThis.litPropertyMetadata.set(r, o = /* @__PURE__ */ new Map()), s === "setter" && ((e = Object.create(e)).wrapped = !0), o.set(i.name, e), s === "accessor") {
@@ -555,8 +555,8 @@ const pe = { attribute: !0, type: String, converter: et, reflect: !1, hasChanged
   }
   throw Error("Unsupported decorator location: " + s);
 };
-function b(e) {
-  return (t, i) => typeof i == "object" ? fe(e, t, i) : ((s, r, o) => {
+function y(e) {
+  return (t, i) => typeof i == "object" ? pe(e, t, i) : ((s, r, o) => {
     const n = r.hasOwnProperty(o);
     return r.constructor.createProperty(o, s), n ? Object.getOwnPropertyDescriptor(r, o) : void 0;
   })(e, t, i);
@@ -566,243 +566,230 @@ function b(e) {
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-function g(e) {
-  return b({ ...e, state: !0, attribute: !1 });
+function m(e) {
+  return y({ ...e, state: !0, attribute: !1 });
 }
 const k = 1440;
-function S(e, t) {
+function _(e, t) {
   return t.left + e / k * t.width;
 }
-function Nt(e, t) {
-  const i = (e - t.left) / t.width;
-  return nt(Math.round(i * k), 0, k - 1);
-}
 function Y(e, t) {
+  const i = (e - t.left) / t.width;
+  return vt(Math.round(i * k), 0, k - 1);
+}
+function Tt(e, t) {
   return t.top + (1 - e / 100) * t.height;
 }
-function me(e, t) {
+function fe(e, t) {
   const i = 1 - (e - t.top) / t.height;
-  return nt(Math.round(i * 100), 1, 100);
+  return vt(Math.round(i * 100), 1, 100);
 }
-function ve(e, t, i, s) {
-  const r = 1e6 / e, o = 1e6 / s, n = 1e6 / i, a = (r - o) / (n - o);
-  return t.top + nt(a, 0, 1) * t.height;
-}
-function ge(e, t, i, s) {
-  const r = nt((e - t.top) / t.height, 0, 1), o = 1e6 / s, n = 1e6 / i;
-  return Math.round(1e6 / (o + r * (n - o)));
-}
-function nt(e, t, i) {
+function vt(e, t, i) {
   return Math.min(i, Math.max(t, e));
 }
-function C(e) {
+function me(e, t = 5) {
+  return vt(Math.round(e / t) * t, 0, k - 1);
+}
+function ge(e, t, i = 12) {
+  let s = null, r = 1 / 0;
+  for (const o of t) {
+    const n = Math.abs(o.minute - e);
+    n < r && (r = n, s = o);
+  }
+  return s && r <= i ? { minute: s.minute, event: s.event } : { minute: me(e), event: null };
+}
+function ve(e, t, i, s = 22) {
+  let r = null, o = s;
+  for (const n of i) {
+    const a = Math.hypot(n.x - e, n.y - t);
+    a <= o && (o = a, r = n.id);
+  }
+  return r;
+}
+function P(e) {
   const t = (e % k + k) % k, i = Math.floor(t / 60), s = t % 60;
   return `${String(i).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
-function Ot(e) {
+function Et(e) {
   const t = /^(\d{1,2}):(\d{2})$/.exec(e.trim());
   if (!t) return null;
   const i = Number(t[1]), s = Number(t[2]);
   return i > 23 || s > 59 ? null : i * 60 + s;
 }
-var $e = Object.defineProperty, be = Object.getOwnPropertyDescriptor, w = (e, t, i, s) => {
-  for (var r = s > 1 ? void 0 : s ? be(t, i) : t, o = e.length - 1, n; o >= 0; o--)
+var be = Object.defineProperty, $e = Object.getOwnPropertyDescriptor, S = (e, t, i, s) => {
+  for (var r = s > 1 ? void 0 : s ? $e(t, i) : t, o = e.length - 1, n; o >= 0; o--)
     (n = e[o]) && (r = (s ? n(t, i, r) : n(r)) || r);
-  return s && r && $e(t, i, r), r;
+  return s && r && be(t, i, r), r;
 };
-const ct = 128, Rt = 18, X = 46, ye = 14, It = 22, dt = 26, I = 34;
-let y = class extends O {
+const Ct = 150, Nt = 74, ye = 26, j = 46, xe = 14, Ot = 22, L = 34, we = 20;
+let $ = class extends O {
   constructor() {
-    super(...arguments), this.samples = [], this.keyframes = [], this.sun = {}, this.nowMinute = 0, this.selectedId = null, this.minKelvin = 2200, this.maxKelvin = 6500, this.scrubMinute = null, this.width = 900, this.painting = null, this.scrubbing = !1;
+    super(...arguments), this.samples = [], this.keyframes = [], this.sun = {}, this.nowMinute = 0, this.selectedId = null, this.scrubMinute = null, this.width = 900, this.painting = !1, this.scrubbing = !1, this.draggingMarker = null;
   }
   get plotWidth() {
-    return Math.max(120, this.width - X - ye);
+    return Math.max(120, this.width - j - xe);
   }
-  plotFor(e) {
+  get brightnessPlot() {
+    return { left: j, top: Ot, width: this.plotWidth, height: Ct };
+  }
+  get ribbonPlot() {
     return {
-      left: X,
-      top: It + (e === "brightness" ? 0 : e === "warmth" ? 1 : 2) * (ct + Rt + dt),
+      left: j,
+      top: Ot + Ct + ye,
       width: this.plotWidth,
-      height: ct
+      height: Nt
     };
   }
-  get lanesHeight() {
-    return It + 3 * (ct + Rt + dt);
-  }
   get scrubTop() {
-    return this.lanesHeight + 6;
+    return this.ribbonPlot.top + Nt + we + 10;
   }
   get totalHeight() {
-    return this.scrubTop + I + 8;
+    return this.scrubTop + L + 8;
   }
   render() {
-    const e = this.totalHeight;
-    return c`
+    return h`
       <svg
-        viewBox="0 0 ${this.width} ${e}"
+        viewBox="0 0 ${this.width} ${this.totalHeight}"
         @pointerdown=${this.onPointerDown}
         @pointermove=${this.onPointerMove}
         @pointerup=${this.onPointerUp}
         @pointercancel=${this.onPointerUp}
       >
-        ${this.renderLane("brightness", "Brightness")}
-        ${this.renderLane("warmth", "Warmth")}
-        ${this.renderLane("colour", "Colour")}
+        ${this.renderBrightness()}
+        ${this.renderRibbon()}
         ${this.renderScrubBar()}
       </svg>
     `;
   }
-  /** Previewing lives here, because dragging a lane now deforms the curve.
-   *  Keeping both on the same surface would mean a mode, and a mode means
-   *  sometimes dragging and getting the wrong one. */
-  renderScrubBar() {
-    const e = {
-      left: X,
-      top: this.scrubTop,
-      width: this.plotWidth,
-      height: I
-    }, t = this.scrubMinute === null ? null : S(this.scrubMinute, e);
-    return m`
+  // --- brightness -----------------------------------------------------------
+  renderBrightness() {
+    const e = this.brightnessPlot, t = this.samples.filter((i) => i.brightness_pct !== null).map(
+      (i) => `${_(i.minute, e).toFixed(1)},${Tt(
+        i.brightness_pct,
+        e
+      ).toFixed(1)}`
+    );
+    return b`
       <g>
-        <rect class="scrub-bar" x=${e.left} y=${e.top}
-              width=${e.width} height=${e.height} rx=${I / 2} />
-        ${this.samples.map((i, s) => {
-      const r = this.samples[s + 1], o = S(i.minute, e), n = r ? S(r.minute, e) : e.left + e.width, a = i.rgb ?? [80, 80, 80];
-      return m`<rect x=${o} y=${e.top + 7}
-                           width=${Math.max(1, n - o)} height=${I - 14}
-                           fill="rgb(${a[0]},${a[1]},${a[2]})" />`;
+        <text class="lane-title" x=${e.left} y=${e.top - 7}>Brightness</text>
+        <rect class="lane-bg" x=${e.left} y=${e.top}
+              width=${e.width} height=${e.height} rx="6" />
+        ${this.renderGrid(e, !1)}
+        ${[100, 50, 1].map(
+      (i) => b`<text class="axis-label" x=${e.left - 6}
+                             y=${Tt(i, e) + 3}
+                             text-anchor="end">${i}%</text>`
+    )}
+        ${t.length > 1 ? b`<polyline class="curve" points=${t.join(" ")} />` : ""}
+        ${this.keyframes.map((i) => {
+      const s = _(i.minute, e);
+      return b`<line class="kf-tick" x1=${s} y1=${e.top + e.height - 8}
+                           x2=${s} y2=${e.top + e.height} />`;
     })}
-        <text class="axis-label" x=${e.left - 6} y=${e.top + I / 2 + 3}
-              text-anchor="end">preview</text>
-        ${t === null ? "" : m`<circle class="scrub-handle" cx=${t}
-                        cy=${e.top + I / 2} r="9" />`}
+        ${this.renderSun(e)} ${this.renderNow(e)} ${this.renderScrub(e)}
       </g>
     `;
   }
-  renderLane(e, t) {
-    const i = this.plotFor(e), r = this.samples.filter((o) => this.laneApplies(e, o)).length === 0 && e !== "brightness";
-    return m`
+  // --- colour ribbon --------------------------------------------------------
+  renderRibbon() {
+    const e = this.ribbonPlot;
+    return b`
       <g>
-        <text class="lane-title" x=${i.left} y=${i.top - 7}>${t}</text>
-        <rect class="lane-bg" x=${i.left} y=${i.top}
-              width=${i.width} height=${i.height} rx="6" />
-        ${this.renderGrid(i, e)}
-        ${this.renderGradientStrip(i, e)}
-        ${this.renderCurve(i, e)}
-        ${this.renderSunMarkers(i)}
-        ${this.renderNow(i)}
-        ${this.renderScrub(i)}
-        ${this.renderKeyframeTicks(i, e)}
-        ${r ? m`
-            <rect class="inactive-wash" x=${i.left} y=${i.top}
-                  width=${i.width} height=${i.height} rx="6" />
-            <text class="inactive-note" x=${i.left + i.width / 2}
-                  y=${i.top + i.height / 2} text-anchor="middle">
-              ${e === "warmth" ? "this curve has no colour-temperature section" : "this curve has no colour section"}
-            </text>` : ""}
+        <text class="lane-title" x=${e.left} y=${e.top - 7}>
+          Colour — tap to set
+        </text>
+        ${this.samples.map((t, i) => {
+      const s = this.samples[i + 1], r = _(t.minute, e), o = s ? _(s.minute, e) : e.left + e.width, n = t.rgb ?? [80, 80, 80];
+      return b`<rect class="ribbon" x=${r} y=${e.top}
+                           width=${Math.max(1, o - r + 0.5)} height=${e.height}
+                           fill="rgb(${n[0]},${n[1]},${n[2]})" />`;
+    })}
+        <rect class="ribbon-frame" x=${e.left} y=${e.top}
+              width=${e.width} height=${e.height} rx="6" />
+        ${this.renderSun(e)} ${this.renderNow(e)} ${this.renderScrub(e)}
+        ${this.markers().map((t) => {
+      const i = this.keyframes.find((r) => r.id === t.id), s = i.mode === "hs" ? `hsl(${i.hs?.[0] ?? 0}, ${i.hs?.[1] ?? 100}%, 50%)` : "#ffffff";
+      return b`
+            <g>
+              <circle class="marker-hit" cx=${t.x} cy=${t.y} r="22"
+                      data-id=${t.id} />
+              <circle class="marker ${this.selectedId === t.id ? "selected" : ""}"
+                      cx=${t.x} cy=${t.y} r="9" fill=${s}>
+                <title>${P(i.minute)} — tap to set the colour</title>
+              </circle>
+            </g>`;
+    })}
+        ${this.renderHourLabels(e)}
       </g>
     `;
   }
-  /** Is this sample edited in this lane? Warmth and colour are mutually exclusive. */
-  laneApplies(e, t) {
-    return e === "brightness" ? t.brightness_pct !== null : e === "warmth" ? t.mode === "kelvin" : t.mode === "hs";
+  /** One marker per keyframe, sitting on the ribbon. */
+  markers() {
+    const e = this.ribbonPlot;
+    return this.keyframes.map((t) => ({
+      id: t.id,
+      x: _(t.minute, e),
+      y: e.top + e.height / 2
+    }));
   }
+  // --- shared furniture -----------------------------------------------------
   renderGrid(e, t) {
     const i = [];
-    for (let r = 0; r <= 24; r += 3) {
-      const o = S(r * 60, e);
-      i.push(m`<line class="grid" x1=${o} y1=${e.top} x2=${o}
-                          y2=${e.top + e.height} />`), t === "colour" && i.push(m`<text class="axis-label" x=${o} y=${e.top + e.height + 16}
-                             text-anchor="middle">${String(r).padStart(2, "0")}</text>`);
+    for (let s = 0; s <= 24; s += 3) {
+      const r = _(s * 60, e);
+      i.push(b`<line class="grid" x1=${r} y1=${e.top} x2=${r}
+                         y2=${e.top + e.height} />`), t && i.push(b`<text class="axis-label" x=${r} y=${e.top + e.height + 16}
+                           text-anchor="middle">${String(s).padStart(2, "0")}</text>`);
     }
-    const s = t === "brightness" ? [
-      { value: 100, y: Y(100, e), text: "100%" },
-      { value: 50, y: Y(50, e), text: "50%" },
-      { value: 1, y: Y(1, e), text: "1%" }
-    ] : t === "warmth" ? [
-      { value: this.maxKelvin, y: e.top, text: `${this.maxKelvin}K` },
-      { value: this.minKelvin, y: e.top + e.height, text: `${this.minKelvin}K` }
-    ] : [
-      { value: 360, y: e.top, text: "360°" },
-      { value: 0, y: e.top + e.height, text: "0°" }
-    ];
-    for (const r of s)
-      i.push(m`<text class="axis-label" x=${e.left - 6} y=${r.y + 3}
-                           text-anchor="end">${r.text}</text>`);
-    return m`${i}`;
+    return b`${i}`;
   }
-  /** The gradient strip under each lane, drawn from the engine's own colours. */
-  renderGradientStrip(e, t) {
-    if (this.samples.length === 0) return m``;
-    const i = e.top + e.height + (t === "colour" ? 22 : 6), s = this.samples.map((r, o) => {
-      const n = this.samples[o + 1], a = S(r.minute, e), l = n ? S(n.minute, e) : e.left + e.width, h = r.rgb ?? [80, 80, 80], f = !this.laneApplies(t, r);
-      return m`<rect x=${a} y=${i} width=${Math.max(1, l - a)}
-                       height=${dt - 10}
-                       fill="rgb(${h[0]},${h[1]},${h[2]})"
-                       opacity=${f ? 0.25 : 1} />`;
-    });
-    return m`<g>${s}</g>`;
-  }
-  renderCurve(e, t) {
-    if (this.samples.length < 2) return m``;
-    const i = [];
-    for (const s of this.samples) {
-      const r = this.laneApplies(t, s), o = this.valueY(e, t, s);
-      if (o === null) continue;
-      const n = `${S(s.minute, e).toFixed(1)},${o.toFixed(1)}`, a = i[i.length - 1];
-      a && a.active === r ? a.points.push(n) : i.push({ active: r, points: [n] });
+  renderHourLabels(e) {
+    const t = [];
+    for (let i = 0; i <= 24; i += 3) {
+      const s = _(i * 60, e);
+      t.push(b`<text class="axis-label" x=${s} y=${e.top + e.height + 16}
+                         text-anchor="middle">${String(i).padStart(2, "0")}</text>`);
     }
-    return m`${i.filter((s) => s.points.length > 1).map(
-      (s) => m`<polyline class="curve ${s.active ? "" : "muted"}"
-                        points=${s.points.join(" ")} />`
-    )}`;
+    return b`${t}`;
   }
-  valueY(e, t, i) {
-    if (t === "brightness")
-      return i.brightness_pct === null ? null : Y(i.brightness_pct, e);
-    if (t === "warmth") {
-      const r = i.kelvin ?? this.minKelvin;
-      return ve(r, e, this.minKelvin, this.maxKelvin);
-    }
-    const s = i.hs ? i.hs[0] : 0;
-    return e.top + (1 - s / 360) * e.height;
-  }
-  renderSunMarkers(e) {
-    return m`${Object.entries(this.sun).map(([t, i]) => {
-      if (!i) return m``;
-      const s = S(i.minute, e);
-      return m`<line class="sun" x1=${s} y1=${e.top} x2=${s}
+  renderSun(e) {
+    return b`${Object.entries(this.sun).map(([t, i]) => {
+      if (!i) return b``;
+      const s = _(i.minute, e);
+      return b`<line class="sun" x1=${s} y1=${e.top} x2=${s}
                        y2=${e.top + e.height}>
-                   <title>${t} ${C(i.minute)}</title>
+                   <title>${t} ${P(i.minute)}</title>
                  </line>`;
     })}`;
   }
   renderNow(e) {
-    const t = S(this.nowMinute, e);
-    return m`<line class="now" x1=${t} y1=${e.top} x2=${t}
+    const t = _(this.nowMinute, e);
+    return b`<line class="now" x1=${t} y1=${e.top} x2=${t}
                      y2=${e.top + e.height} />`;
   }
   renderScrub(e) {
-    if (this.scrubMinute === null) return m``;
-    const t = S(this.scrubMinute, e);
-    return m`<line class="scrub" x1=${t} y1=${e.top} x2=${t}
+    if (this.scrubMinute === null) return b``;
+    const t = _(this.scrubMinute, e);
+    return b`<line class="scrub" x1=${t} y1=${e.top} x2=${t}
                      y2=${e.top + e.height} />`;
   }
-  /** Faint ticks where the keyframes fall.
-   *
-   *  Not handles: the lane is a drawing surface, and anything that looks draggable
-   *  invites a gesture that no longer exists. These only mark where the control
-   *  points ended up, which is otherwise invisible until you read the table.
-   */
-  renderKeyframeTicks(e, t) {
-    return m`${this.keyframes.filter((i) => this.keyframeInLane(t, i)).map((i) => {
-      const s = S(i.minute, e);
-      return m`<line class="kf-tick" x1=${s} y1=${e.top + e.height - 8}
-                         x2=${s} y2=${e.top + e.height} />`;
-    })}`;
-  }
-  keyframeInLane(e, t) {
-    return e === "brightness" ? !0 : e === "warmth" ? t.mode === "kelvin" : t.mode === "hs";
+  renderScrubBar() {
+    const e = {
+      left: j,
+      top: this.scrubTop,
+      width: this.plotWidth,
+      height: L
+    }, t = this.scrubMinute === null ? null : _(this.scrubMinute, e);
+    return b`
+      <g>
+        <rect class="scrub-bar" x=${e.left} y=${e.top}
+              width=${e.width} height=${e.height} rx=${L / 2} />
+        <text class="axis-label" x=${e.left - 6} y=${e.top + L / 2 + 3}
+              text-anchor="end">preview</text>
+        ${t === null ? "" : b`<circle class="scrub-handle" cx=${t}
+                        cy=${e.top + L / 2} r="9" />`}
+      </g>
+    `;
   }
   // --- interaction ----------------------------------------------------------
   localPoint(e) {
@@ -812,21 +799,24 @@ let y = class extends O {
       y: (e.clientY - i.top) * s
     };
   }
-  laneAt(e) {
-    for (const t of ["brightness", "warmth", "colour"]) {
-      const i = this.plotFor(t);
-      if (e >= i.top - 10 && e <= i.top + i.height + 10) return t;
-    }
-    return null;
-  }
   onPointerDown(e) {
     const t = this.localPoint(e);
-    if (e.target.setPointerCapture?.(e.pointerId), t.y >= this.scrubTop) {
+    e.target.setPointerCapture?.(e.pointerId);
+    const i = this.brightnessPlot, s = this.ribbonPlot;
+    if (t.y >= this.scrubTop) {
       this.scrubbing = !0, this.emitScrub(t.x);
       return;
     }
-    const i = this.laneAt(t.y);
-    i && (this.painting = i, this.emitPaint(i, t));
+    if (t.y >= s.top - 12 && t.y <= s.top + s.height + 12) {
+      const r = ve(t.x, t.y, this.markers());
+      if (r) {
+        this.draggingMarker = r, this.selectedId = r, this.emit("colour-pick", { id: r, minute: null });
+        return;
+      }
+      this.emit("colour-pick", { id: null, minute: Y(t.x, s) });
+      return;
+    }
+    t.y >= i.top - 10 && t.y <= i.top + i.height + 10 && (this.painting = !0, this.emitPaint(t));
   }
   onPointerMove(e) {
     const t = this.localPoint(e);
@@ -834,69 +824,54 @@ let y = class extends O {
       this.emitScrub(t.x);
       return;
     }
-    this.painting && this.emitPaint(this.painting, t);
-  }
-  onPointerUp() {
-    if (this.painting) {
-      const e = this.painting;
-      this.painting = null, this.dispatchEvent(
-        new CustomEvent("paint-commit", { detail: { lane: e }, bubbles: !0, composed: !0 })
-      );
+    if (this.draggingMarker) {
+      const i = Object.entries(this.sun).filter(([, r]) => r).map(([r, o]) => ({ event: r, minute: o.minute })), s = ge(Y(t.x, this.ribbonPlot), i);
+      this.emit("marker-move", {
+        id: this.draggingMarker,
+        minute: s.minute,
+        sunEvent: s.event
+      });
       return;
     }
-    this.scrubbing && (this.scrubbing = !1, this.dispatchEvent(new CustomEvent("scrub-end", { bubbles: !0, composed: !0 })));
+    this.painting && this.emitPaint(t);
+  }
+  onPointerUp() {
+    if (this.draggingMarker) {
+      this.draggingMarker = null, this.emit("marker-commit", {});
+      return;
+    }
+    if (this.painting) {
+      this.painting = !1, this.emit("paint-commit", {});
+      return;
+    }
+    this.scrubbing && (this.scrubbing = !1, this.emit("scrub-end", {}));
+  }
+  emitPaint(e) {
+    const t = this.brightnessPlot;
+    this.emit("curve-paint", {
+      minute: Y(e.x, t),
+      value: fe(e.y, t)
+    });
   }
   emitScrub(e) {
     const t = {
-      left: X,
+      left: j,
       top: this.scrubTop,
       width: this.plotWidth
     };
-    this.dispatchEvent(
-      new CustomEvent("scrub", {
-        detail: { minute: Nt(e, t) },
-        bubbles: !0,
-        composed: !0
-      })
-    );
+    this.emit("scrub", { minute: Y(e, t) });
   }
-  /** Report where the cursor is, in this lane's own units. The panel owns the
-   *  sample data and records the stroke; the graph stays a view. */
-  emitPaint(e, t) {
-    const i = this.plotFor(e), s = Nt(t.x, i);
-    let r;
-    if (e === "brightness")
-      r = me(t.y, i);
-    else if (e === "warmth")
-      r = ge(t.y, i, this.minKelvin, this.maxKelvin);
-    else {
-      const o = 1 - (t.y - i.top) / i.height;
-      r = Math.round(Math.min(360, Math.max(0, o * 360)));
-    }
-    this.dispatchEvent(
-      new CustomEvent("curve-paint", {
-        detail: { lane: e, minute: s, value: r },
-        bubbles: !0,
-        composed: !0
-      })
-    );
+  emit(e, t) {
+    this.dispatchEvent(new CustomEvent(e, { detail: t, bubbles: !0, composed: !0 }));
   }
 };
-y.styles = mt`
-    :host {
-      display: block;
-      touch-action: none;
-      user-select: none;
-    }
-    svg {
-      display: block;
-      width: 100%;
-      height: auto;
-      overflow: visible;
-    }
+$.styles = dt`
+    :host { display: block; touch-action: none; user-select: none; }
+    svg { display: block; width: 100%; height: auto; overflow: visible; }
     .lane-bg {
       fill: var(--card-background-color, #fff);
       stroke: var(--divider-color, #e0e0e0);
+      cursor: crosshair;
     }
     .lane-title {
       fill: var(--secondary-text-color, #666);
@@ -908,24 +883,10 @@ y.styles = mt`
       fill: var(--secondary-text-color, #888);
       font: 10px var(--paper-font-body1_-_font-family, sans-serif);
     }
-    .grid {
-      stroke: var(--divider-color, #e8e8e8);
-      stroke-width: 1;
-    }
-    .now {
-      stroke: var(--error-color, #d32f2f);
-      stroke-width: 2;
-      stroke-dasharray: 3 3;
-    }
-    .scrub {
-      stroke: var(--primary-color, #03a9f4);
-      stroke-width: 2;
-    }
-    .sun {
-      stroke: var(--secondary-text-color, #aaa);
-      stroke-width: 1;
-      stroke-dasharray: 2 4;
-    }
+    .grid { stroke: var(--divider-color, #e8e8e8); stroke-width: 1; }
+    .now { stroke: var(--error-color, #d32f2f); stroke-width: 2; stroke-dasharray: 3 3; }
+    .scrub { stroke: var(--primary-color, #03a9f4); stroke-width: 2; }
+    .sun { stroke: var(--secondary-text-color, #aaa); stroke-width: 1; stroke-dasharray: 2 4; }
     .curve {
       fill: none;
       stroke: var(--primary-color, #03a9f4);
@@ -933,27 +894,21 @@ y.styles = mt`
       stroke-linejoin: round;
       stroke-linecap: round;
     }
-    .curve.muted {
-      stroke: var(--disabled-text-color, #bbb);
-      stroke-width: 1.5;
-      stroke-dasharray: 4 4;
-    }
-    .inactive-wash {
-      fill: var(--card-background-color, #fff);
-      opacity: 0.66;
+    .kf-tick { stroke: var(--secondary-text-color, #999); stroke-width: 2; opacity: 0.5; }
+    .ribbon { cursor: crosshair; }
+    .ribbon-frame {
+      fill: none;
+      stroke: var(--divider-color, #ddd);
       pointer-events: none;
     }
-    .inactive-note {
-      fill: var(--secondary-text-color, #888);
-      font: italic 11px var(--paper-font-body1_-_font-family, sans-serif);
-      pointer-events: none;
+    .marker {
+      stroke: #fff;
+      stroke-width: 2.5;
+      cursor: grab;
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
     }
-    .kf-tick {
-      stroke: var(--secondary-text-color, #999);
-      stroke-width: 2;
-      opacity: 0.5;
-    }
-    .lane-bg { cursor: crosshair; }
+    .marker.selected { stroke: var(--primary-color, #03a9f4); stroke-width: 3.5; }
+    .marker-hit { fill: transparent; cursor: grab; }
     .scrub-bar {
       fill: var(--secondary-background-color, #eee);
       stroke: var(--divider-color, #ddd);
@@ -966,70 +921,67 @@ y.styles = mt`
       pointer-events: none;
     }
   `;
-w([
-  b({ attribute: !1 })
-], y.prototype, "samples", 2);
-w([
-  b({ attribute: !1 })
-], y.prototype, "keyframes", 2);
-w([
-  b({ attribute: !1 })
-], y.prototype, "sun", 2);
-w([
-  b({ type: Number })
-], y.prototype, "nowMinute", 2);
-w([
-  b({ type: String })
-], y.prototype, "selectedId", 2);
-w([
-  b({ type: Number })
-], y.prototype, "minKelvin", 2);
-w([
-  b({ type: Number })
-], y.prototype, "maxKelvin", 2);
-w([
-  b({ type: Number })
-], y.prototype, "scrubMinute", 2);
-w([
-  b({ type: Number })
-], y.prototype, "width", 2);
-w([
-  g()
-], y.prototype, "painting", 2);
-w([
-  g()
-], y.prototype, "scrubbing", 2);
-y = w([
-  yt("lightcurve-curve-graph")
-], y);
-function xe(e, t, i, s) {
-  const r = e - i, o = t - i, a = (Math.atan2(r, -o) * (180 / Math.PI) + 360) % 360, l = Math.hypot(r, o), h = Math.min(100, Math.round(l / s * 100));
-  return { hue: Math.round(a), saturation: h };
+S([
+  y({ attribute: !1 })
+], $.prototype, "samples", 2);
+S([
+  y({ attribute: !1 })
+], $.prototype, "keyframes", 2);
+S([
+  y({ attribute: !1 })
+], $.prototype, "sun", 2);
+S([
+  y({ type: Number })
+], $.prototype, "nowMinute", 2);
+S([
+  y({ type: String })
+], $.prototype, "selectedId", 2);
+S([
+  y({ type: Number })
+], $.prototype, "scrubMinute", 2);
+S([
+  y({ type: Number })
+], $.prototype, "width", 2);
+S([
+  m()
+], $.prototype, "painting", 2);
+S([
+  m()
+], $.prototype, "scrubbing", 2);
+S([
+  m()
+], $.prototype, "draggingMarker", 2);
+$ = S([
+  gt("lightcurve-curve-graph")
+], $);
+function _e(e, t, i, s) {
+  const r = e - i, o = t - i, a = (Math.atan2(r, -o) * (180 / Math.PI) + 360) % 360, l = Math.hypot(r, o), c = Math.min(100, Math.round(l / s * 100));
+  return { hue: Math.round(a), saturation: c };
 }
-function we(e, t, i, s) {
+function ke(e, t, i, s) {
   const r = e % 360 * Math.PI / 180, o = Math.min(100, Math.max(0, t)) / 100 * s;
   return {
     x: i + Math.sin(r) * o,
     y: i - Math.cos(r) * o
   };
 }
-function ut(e, t) {
+function Lt(e, t) {
   return `hsl(${Math.round(e)}, ${Math.round(t)}%, 50%)`;
 }
-function Ft(e) {
+function Kt(e) {
   const t = Math.min(Math.max(e, 1e3), 4e4) / 100;
   let i, s, r;
   t <= 66 ? (i = 255, s = 99.4708025861 * Math.log(t) - 161.1195681661) : (i = 329.698727446 * (t - 60) ** -0.1332047592, s = 288.1221695283 * (t - 60) ** -0.0755148492), t >= 66 ? r = 255 : t <= 19 ? r = 0 : r = 138.5177312231 * Math.log(t - 10) - 305.0447927307;
   const o = (n) => Math.round(Math.min(255, Math.max(0, n)));
   return `rgb(${o(i)}, ${o(s)}, ${o(r)})`;
 }
-var _e = Object.defineProperty, Se = Object.getOwnPropertyDescriptor, at = (e, t, i, s) => {
-  for (var r = s > 1 ? void 0 : s ? Se(t, i) : t, o = e.length - 1, n; o >= 0; o--)
+var Se = Object.defineProperty, Ae = Object.getOwnPropertyDescriptor, nt = (e, t, i, s) => {
+  for (var r = s > 1 ? void 0 : s ? Ae(t, i) : t, o = e.length - 1, n; o >= 0; o--)
     (n = e[o]) && (r = (s ? n(t, i, r) : n(r)) || r);
-  return s && r && _e(t, i, r), r;
+  return s && r && Se(t, i, r), r;
 };
-const H = 220, Ut = H / 2 - 10;
-let z = class extends O {
+const U = 220, It = U / 2 - 10;
+let G = class extends O {
   constructor() {
     super(...arguments), this.hue = 0, this.saturation = 100, this.brightness = 50, this.dragging = !1, this.onDown = (e) => {
       this.dragging = !0, e.target.setPointerCapture?.(e.pointerId), this.pick(e);
@@ -1040,8 +992,8 @@ let z = class extends O {
     };
   }
   render() {
-    const e = we(this.hue, this.saturation, H / 2, Ut), t = 12 + this.brightness / 100 * 43;
-    return c`
+    const e = ke(this.hue, this.saturation, U / 2, It), t = 12 + this.brightness / 100 * 43;
+    return h`
       <div
         class="wheel"
         @pointerdown=${this.onDown}
@@ -1087,11 +1039,11 @@ let z = class extends O {
     `;
   }
   pick(e) {
-    const i = this.renderRoot.querySelector(".wheel").getBoundingClientRect(), s = H / i.width, { hue: r, saturation: o } = xe(
+    const i = this.renderRoot.querySelector(".wheel").getBoundingClientRect(), s = U / i.width, { hue: r, saturation: o } = _e(
       (e.clientX - i.left) * s,
       (e.clientY - i.top) * s,
-      H / 2,
-      Ut
+      U / 2,
+      It
     );
     this.emit({ hue: r, saturation: o });
   }
@@ -1109,7 +1061,7 @@ let z = class extends O {
     );
   }
 };
-z.styles = mt`
+G.styles = dt`
     :host {
       display: flex;
       flex-wrap: wrap;
@@ -1118,8 +1070,8 @@ z.styles = mt`
     }
     .wheel {
       position: relative;
-      width: ${H}px;
-      height: ${H}px;
+      width: ${U}px;
+      height: ${U}px;
       border-radius: 50%;
       touch-action: none;
       cursor: crosshair;
@@ -1173,63 +1125,63 @@ z.styles = mt`
       color: var(--secondary-text-color, #666);
     }
   `;
-at([
-  b({ type: Number })
-], z.prototype, "hue", 2);
-at([
-  b({ type: Number })
-], z.prototype, "saturation", 2);
-at([
-  b({ type: Number })
-], z.prototype, "brightness", 2);
-z = at([
-  yt("lightcurve-colour-wheel")
-], z);
+nt([
+  y({ type: Number })
+], G.prototype, "hue", 2);
+nt([
+  y({ type: Number })
+], G.prototype, "saturation", 2);
+nt([
+  y({ type: Number })
+], G.prototype, "brightness", 2);
+G = nt([
+  gt("lightcurve-colour-wheel")
+], G);
 function st(e, t) {
   if (e.length <= 2) return [...e];
   let i = 0, s = 0;
   const r = e[0], o = e[e.length - 1];
   for (let l = 1; l < e.length - 1; l++) {
-    const h = Ae(e[l], r, o);
-    h > s && (s = h, i = l);
+    const c = Pe(e[l], r, o);
+    c > s && (s = c, i = l);
   }
   if (s <= t)
     return [r, o];
   const n = st(e.slice(0, i + 1), t), a = st(e.slice(i), t);
   return [...n.slice(0, -1), ...a];
 }
-function Ae(e, t, i) {
+function Pe(e, t, i) {
   const s = i.minute - t.minute;
   if (s === 0) return Math.abs(e.value - t.value);
   const r = (i.value - t.value) / s, o = t.value + (e.minute - t.minute) * r;
   return Math.abs(e.value - o);
 }
-function ke(e, t, i = 1.5) {
+function Me(e, t, i = 1.5) {
   let s = i, r = st(e, s);
   for (let o = 0; o < 24 && r.length > t; o++)
     s *= 1.6, r = st(e, s);
   return { points: r, tolerance: s };
 }
-function lt(e, t) {
+function at(e, t) {
   const i = Math.abs(e - t);
   return Math.min(i, k - i);
 }
-const Me = 48, Pe = 5;
-function Te(e, t) {
+const Te = 48, Ee = 5;
+function Ce(e, t) {
   if (e.kind === "radial")
-    return lt(t, e.centre) <= e.radius;
+    return at(t, e.centre) <= e.radius;
   const { from: i, to: s } = e;
   return i <= s ? t >= i && t <= s : t >= i || t <= s;
 }
-function Ee(e, t) {
+function Ne(e, t) {
   let i = null, s = 1 / 0;
   for (const r of e) {
-    const o = lt(r.minute, t);
+    const o = at(r.minute, t);
     o < s && (s = o, i = r);
   }
   return i ? i.value : null;
 }
-function Ht(e, t, i, s) {
+function Rt(e, t, i, s) {
   if (t === "brightness")
     e.brightness = Math.round(Math.min(100, Math.max(1, i)));
   else if (t === "warmth")
@@ -1239,61 +1191,61 @@ function Ht(e, t, i, s) {
     e.colour = { mode: "hs", hs: [Math.round(i) % 360, Math.round(r)] };
   }
 }
-function Ce(e) {
+function Oe(e) {
   const t = (e % 1440 + 1440) % 1440, i = String(Math.floor(t / 60)).padStart(2, "0"), s = String(t % 60).padStart(2, "0");
   return `${i}:${s}`;
 }
-function Ne(e, t, i, s, r, o = Me, n) {
-  const a = new Map(t.map(($) => [$.id, $.minute])), l = ($) => Te(r, $), h = e.map(($) => {
-    const V = a.get($.id);
-    if (V === void 0 || !l(V)) return $;
-    const P = Ee(s, V);
-    if (P === null) return $;
-    const K = JSON.parse(JSON.stringify($));
-    return Ht(K, i, P, n), K;
-  }), f = s.filter(($) => l($.minute));
-  if (f.length < 3) return h;
-  const u = i === "brightness" ? 2.5 : i === "warmth" ? 90 : 8, { points: _ } = ke(f, o, u), A = h.map(($) => a.get($.id)).filter(($) => $ !== void 0), M = [];
-  for (const $ of _) {
-    if (h.length + M.length >= o) break;
-    if ([...A, ...M.map((q) => Oe(q))].some(
-      (q) => q !== null && lt(q, $.minute) < Pe
+function Ie(e, t, i, s, r, o = Te, n) {
+  const a = new Map(t.map((v) => [v.id, v.minute])), l = (v) => Ce(r, v), c = e.map((v) => {
+    const q = a.get(v.id);
+    if (q === void 0 || !l(q)) return v;
+    const T = Ne(s, q);
+    if (T === null) return v;
+    const z = JSON.parse(JSON.stringify(v));
+    return Rt(z, i, T, n), z;
+  }), f = s.filter((v) => l(v.minute));
+  if (f.length < 3) return c;
+  const u = i === "brightness" ? 2.5 : i === "warmth" ? 90 : 8, { points: w } = Me(f, o, u), A = c.map((v) => a.get(v.id)).filter((v) => v !== void 0), M = [];
+  for (const v of w) {
+    if (c.length + M.length >= o) break;
+    if ([...A, ...M.map((X) => Re(X))].some(
+      (X) => X !== null && at(X, v.minute) < Ee
     )) continue;
-    const P = Re(h, a, $.minute), K = {
+    const T = Ue(c, a, v.minute), z = {
       id: `k_${Math.random().toString(36).slice(2, 8)}`,
-      time: { type: "fixed", value: Ce($.minute) },
-      colour: P ? JSON.parse(JSON.stringify(P.colour)) : { mode: "kelvin", kelvin: 3e3 },
-      brightness: P ? P.brightness : 50,
-      easing: P ? P.easing : "ease_in_out"
+      time: { type: "fixed", value: Oe(v.minute) },
+      colour: T ? JSON.parse(JSON.stringify(T.colour)) : { mode: "kelvin", kelvin: 3e3 },
+      brightness: T ? T.brightness : 50,
+      easing: T ? T.easing : "ease_in_out"
     };
-    Ht(K, i, $.value, n), M.push(K);
+    Rt(z, i, v.value, n), M.push(z);
   }
-  return [...h, ...M];
+  return [...c, ...M];
 }
-function Oe(e) {
+function Re(e) {
   if (e.time.type !== "fixed" || !e.time.value) return null;
   const [t, i] = e.time.value.split(":").map(Number);
   return t * 60 + i;
 }
-function Re(e, t, i) {
+function Ue(e, t, i) {
   let s = null, r = 1 / 0;
   for (const o of e) {
     const n = t.get(o.id);
     if (n === void 0) continue;
-    const a = lt(n, i);
+    const a = at(n, i);
     a < r && (r = a, s = o);
   }
   return s;
 }
-function Ie() {
+function He() {
   return { values: /* @__PURE__ */ new Map(), first: -1, last: -1 };
 }
-function Ue(e, t, i, s = 5) {
+function De(e, t, i, s = 5) {
   const r = new Map(e.values);
   if (e.last >= 0 && e.last !== t) {
     const o = e.last, n = r.get(o) ?? i, a = t - o, l = Math.max(1, Math.round(Math.abs(a) / s));
-    for (let h = 1; h <= l; h++) {
-      const f = h / l, u = Q(o + a * f, s);
+    for (let c = 1; c <= l; c++) {
+      const f = c / l, u = Q(o + a * f, s);
       r.set(tt(u), n + (i - n) * f);
     }
   }
@@ -1303,13 +1255,13 @@ function Ue(e, t, i, s = 5) {
     last: t
   };
 }
-function He(e, t) {
+function Ge(e, t) {
   return t.values.size === 0 ? e : e.map((i) => {
     const s = t.values.get(i.minute);
     return s === void 0 ? i : { minute: i.minute, value: s };
   });
 }
-function De(e) {
+function ze(e) {
   if (e.values.size === 0) return null;
   const t = [...e.values.keys()].sort((r, o) => r - o), i = e.first >= 0 ? e.first : t[0], s = tt(Q(e.last, 5));
   return i <= s ? { from: i, to: s } : { from: s, to: i };
@@ -1320,18 +1272,18 @@ function Q(e, t) {
 function tt(e) {
   return (e % k + k) % k;
 }
-var Ge = Object.defineProperty, ze = Object.getOwnPropertyDescriptor, v = (e, t, i, s) => {
-  for (var r = s > 1 ? void 0 : s ? ze(t, i) : t, o = e.length - 1, n; o >= 0; o--)
+var Be = Object.defineProperty, je = Object.getOwnPropertyDescriptor, g = (e, t, i, s) => {
+  for (var r = s > 1 ? void 0 : s ? je(t, i) : t, o = e.length - 1, n; o >= 0; o--)
     (n = e[o]) && (r = (s ? n(t, i, r) : n(r)) || r);
-  return s && r && Ge(t, i, r), r;
+  return s && r && Be(t, i, r), r;
 };
-const Ke = 300;
+const Le = 300;
 let p = class extends O {
   constructor() {
-    super(...arguments), this.narrow = !1, this.profiles = [], this.groups = [], this.themes = [], this.editingTheme = null, this.themeTarget = [], this.paintSaturation = 90, this.colourPickFor = null, this.profile = null, this.variant = "default", this.samples = [], this.resolved = [], this.sun = {}, this.issues = [], this.selectedId = null, this.previewGroupId = null, this.scrubMinute = null, this.dirty = !1, this.busy = !1, this.error = null, this.graphWidth = 900, this.lastScrubAt = 0, this.stroke = null, this.onKeyframeMove = (e) => {
+    super(...arguments), this.narrow = !1, this.profiles = [], this.groups = [], this.themes = [], this.editingTheme = null, this.themeTarget = [], this.colourPickFor = null, this.profile = null, this.variant = "default", this.samples = [], this.resolved = [], this.sun = {}, this.issues = [], this.selectedId = null, this.previewGroupId = null, this.scrubMinute = null, this.dirty = !1, this.busy = !1, this.error = null, this.graphWidth = 900, this.lastScrubAt = 0, this.stroke = null, this.onKeyframeMove = (e) => {
       const { id: t, minute: i, sunEvent: s, brightness: r, kelvin: o, hue: n } = e.detail;
       this.mutate(t, (a) => {
-        if (s ? a.time = { type: "sun", event: s, offset_min: 0 } : a.time = { type: "fixed", value: C(i) }, r !== void 0 && (a.brightness = r), o !== void 0 && (a.colour = { mode: "kelvin", kelvin: o }), n !== void 0) {
+        if (s ? a.time = { type: "sun", event: s, offset_min: 0 } : a.time = { type: "fixed", value: P(i) }, r !== void 0 && (a.brightness = r), o !== void 0 && (a.colour = { mode: "kelvin", kelvin: o }), n !== void 0) {
           const l = a.colour.hs?.[1] ?? 100;
           a.colour = { mode: "hs", hs: [n, l] };
         }
@@ -1341,40 +1293,74 @@ let p = class extends O {
     }, this.onSelect = (e) => {
       this.selectedId = e.detail.id;
     }, this.onPaint = (e) => {
-      const { lane: t, minute: i, value: s } = e.detail;
-      this.stroke = Ue(this.stroke ?? Ie(), i, s);
+      const { minute: t, value: i } = e.detail, s = "brightness";
+      this.stroke = De(this.stroke ?? He(), t, i);
       const r = this.samples.map((n) => ({
         minute: n.minute,
-        value: Dt(n, t)
-      })), o = He(r, this.stroke);
+        value: Ut(n)
+      })), o = Ge(r, this.stroke);
       this.samples = this.samples.map(
-        (n, a) => je(n, t, o[a].value, this.paintSaturation)
+        (n, a) => Fe(n, s, o[a].value)
       ), this.dirty = !0;
-    }, this.onPaintCommit = (e) => {
-      const t = this.stroke;
-      if (this.stroke = null, !this.profile || !t) return;
-      const i = De(t);
-      if (!i) return;
-      const s = e.detail.lane, r = this.samples.map((n) => ({
-        minute: n.minute,
-        value: Dt(n, s)
-      })), o = Ne(
+    }, this.onPaintCommit = () => {
+      const e = this.stroke;
+      if (this.stroke = null, !this.profile || !e) return;
+      const t = ze(e);
+      if (!t) return;
+      const i = "brightness", s = this.samples.map((o) => ({
+        minute: o.minute,
+        value: Ut(o)
+      })), r = Ie(
         this.keyframes,
         this.resolved,
+        i,
         s,
-        r,
-        { kind: "span", ...i },
-        void 0,
-        s === "colour" ? this.paintSaturation : void 0
+        { kind: "span", ...t }
       );
       this.profile = {
         ...this.profile,
-        variants: { ...this.profile.variants, [this.variant]: { keyframes: o } }
+        variants: { ...this.profile.variants, [this.variant]: { keyframes: r } }
       }, this.refreshGraph();
+    }, this.onColourPick = (e) => {
+      const { id: t, minute: i } = e.detail;
+      if (t) {
+        this.selectedId = t, this.colourPickFor = t;
+        return;
+      }
+      if (i === null || !this.profile) return;
+      const s = this.resolved.find((a) => Math.abs(a.minute - i) <= 10);
+      if (s) {
+        this.selectedId = s.id, this.colourPickFor = s.id;
+        return;
+      }
+      const r = this.samples.reduce(
+        (a, l) => Math.abs(l.minute - i) < Math.abs(a.minute - i) ? l : a,
+        this.samples[0]
+      ), o = `k_${Math.random().toString(36).slice(2, 8)}`, n = [
+        ...this.keyframes,
+        {
+          id: o,
+          time: { type: "fixed", value: P(i) },
+          colour: r?.mode === "hs" && r.hs ? { mode: "hs", hs: r.hs } : { mode: "kelvin", kelvin: r?.kelvin ?? 2700 },
+          brightness: r?.brightness_pct ?? 50,
+          easing: "ease_in_out"
+        }
+      ];
+      this.profile = {
+        ...this.profile,
+        variants: { ...this.profile.variants, [this.variant]: { keyframes: n } }
+      }, this.selectedId = o, this.colourPickFor = o, this.dirty = !0, this.refreshGraph();
+    }, this.onMarkerMove = (e) => {
+      const { id: t, minute: i, sunEvent: s } = e.detail;
+      this.mutate(t, (r) => {
+        r.time = s ? { type: "sun", event: s, offset_min: 0 } : { type: "fixed", value: P(i) };
+      });
+    }, this.onMarkerCommit = () => {
+      this.refreshGraph();
     }, this.onScrub = (e) => {
       this.scrubMinute = e.detail.minute;
       const t = Date.now();
-      t - this.lastScrubAt < Ke || (this.lastScrubAt = t, this.previewAt(e.detail.minute));
+      t - this.lastScrubAt < Le || (this.lastScrubAt = t, this.previewAt(e.detail.minute));
     }, this.onScrubEnd = () => {
       this.scrubMinute = null, this.stopPreview();
     };
@@ -1649,7 +1635,7 @@ let p = class extends O {
       ...this.keyframes,
       {
         id: t,
-        time: { type: "fixed", value: C(e) },
+        time: { type: "fixed", value: P(e) },
         colour: { mode: "kelvin", kelvin: 3e3 },
         brightness: 50,
         easing: "ease_in_out"
@@ -1671,14 +1657,14 @@ let p = class extends O {
   // --- rendering ------------------------------------------------------------
   render() {
     const e = this.groups.find((t) => t.id === this.previewGroupId);
-    return c`
-      ${this.error ? c`<div class="error-banner">${this.error}</div>` : d}
+    return h`
+      ${this.error ? h`<div class="error-banner">${this.error}</div>` : d}
       <div class="bar">
         <div>
           <label for="profile">Profile</label>
           <select id="profile" @change=${(t) => void this.openProfile(t.target.value)}>
             ${this.profiles.map(
-      (t) => c`<option value=${t.id} ?selected=${t.id === this.profile?.id}>
+      (t) => h`<option value=${t.id} ?selected=${t.id === this.profile?.id}>
                 ${t.name}${t.used_by.length > 1 ? ` (${t.used_by.length} rooms)` : ""}
               </option>`
     )}
@@ -1690,7 +1676,7 @@ let p = class extends O {
       this.previewGroupId = t.target.value;
     }}>
             ${this.groups.map(
-      (t) => c`<option value=${t.id} ?selected=${t.id === this.previewGroupId}>
+      (t) => h`<option value=${t.id} ?selected=${t.id === this.previewGroupId}>
                 ${t.name}
               </option>`
     )}
@@ -1734,42 +1720,26 @@ let p = class extends O {
           .selectedId=${this.selectedId}
           .scrubMinute=${this.scrubMinute}
           .width=${this.graphWidth}
-          .nowMinute=${Be()}
+          .nowMinute=${We()}
           @keyframe-move=${this.onKeyframeMove}
           @keyframe-commit=${this.onKeyframeCommit}
           @keyframe-select=${this.onSelect}
           @curve-paint=${this.onPaint}
           @paint-commit=${this.onPaintCommit}
+          @colour-pick=${this.onColourPick}
+          @marker-move=${this.onMarkerMove}
+          @marker-commit=${this.onMarkerCommit}
           @scrub=${this.onScrub}
           @scrub-end=${this.onScrubEnd}
         ></lightcurve-curve-graph>
-        <div class="brush">
-          <span class="inline-label">Colour lane paints</span>
-          <span
-            class="swatch inline big"
-            style="background:${ut(30, this.paintSaturation)}"
-          ></span>
-          <label class="inline-label" for="sat">saturation ${this.paintSaturation}%</label>
-          <input
-            id="sat"
-            type="range"
-            min="0"
-            max="100"
-            .value=${String(this.paintSaturation)}
-            @input=${(t) => {
-      this.paintSaturation = Number(t.target.value);
-    }}
-          />
-          <span class="hint">
-            Hue comes from how high you drag; this sets how strong the colour is.
-            Low values give a washed, pastel light; 100% is fully saturated.
-          </span>
-        </div>
         <p class="hint">
-          Drag across a lane to draw it: every moment your cursor passes takes its
-          height. Keyframes are rebuilt from what you drew, and the ones you did not
-          paint over are left alone. The strip at the bottom previews a time of day
-          on ${e ? e.name : "the selected room"}.
+          <strong>Brightness:</strong> drag across it to draw — every moment your
+          cursor passes takes its height.
+          <strong>Colour:</strong> tap the ribbon at any time of day to set the
+          colour there, white or coloured; drag a marker to move it in time, or onto
+          a sun line to make it follow sunrise or sunset.
+          The strip at the bottom previews a time of day on
+          ${e ? e.name : "the selected room"}.
         </p>
       </div>
 
@@ -1779,10 +1749,10 @@ let p = class extends O {
 
       ${this.renderThemes()}
 
-      ${this.issues.length > 0 ? c`<div class="card">
+      ${this.issues.length > 0 ? h`<div class="card">
             <ul class="issues">
               ${this.issues.map(
-      (t) => c`<li class=${t.level}>${t.message}</li>`
+      (t) => h`<li class=${t.level}>${t.message}</li>`
     )}
             </ul>
           </div>` : d}
@@ -1792,9 +1762,9 @@ let p = class extends O {
   }
   /** Buttons for the saved themes, and the editor for one of them. */
   renderThemes() {
-    if (this.themes.length === 0) return c`${d}`;
+    if (this.themes.length === 0) return h`${d}`;
     const e = this.themes.some((t) => t.holding);
-    return c`
+    return h`
       <div class="card">
         <div class="themes-head">
           <h2>Themes</h2>
@@ -1811,7 +1781,7 @@ let p = class extends O {
               rooms each theme covers
             </option>
             ${this.groups.map(
-      (t) => c`<option
+      (t) => h`<option
                 value=${t.id}
                 ?selected=${this.themeTarget[0] === t.id}
               >
@@ -1833,14 +1803,14 @@ let p = class extends O {
         </div>
         <div class="themes">
           ${this.themes.map(
-      (t) => c`
+      (t) => h`
               <div class="theme-card ${t.holding ? "holding" : ""}">
                 <button
                   class="theme-apply"
                   @click=${() => void this.applyTheme(t)}
                   title=${`Apply to ${t.covers.join(", ")}`}
                 >
-                  <span class="swatch" style="background:${Le(t)}"></span>
+                  <span class="swatch" style="background:${Ke(t)}"></span>
                   <span class="theme-text">
                     <span class="theme-name">${t.name}</span>
                     <span class="theme-detail">
@@ -1870,7 +1840,7 @@ let p = class extends O {
   }
   renderThemeEditor(e) {
     const t = e.colour?.hs ?? [30, 80], i = this.themes.some((s) => s.id === e.id);
-    return c`
+    return h`
       <div class="editor">
         <h3>${i ? `Editing ${e.name}` : "New theme"}</h3>
         <div class="row">
@@ -1908,7 +1878,7 @@ let p = class extends O {
           </div>
         </div>
 
-        ${e.mode === "effect" ? c`<div class="row">
+        ${e.mode === "effect" ? h`<div class="row">
               <div class="grow">
                 <label for="theme-effect">Effect name</label>
                 <input
@@ -1922,7 +1892,7 @@ let p = class extends O {
                   the light's effect list in Developer Tools.
                 </p>
               </div>
-            </div>` : c`
+            </div>` : h`
               <lightcurve-colour-wheel
                 .hue=${t[0]}
                 .saturation=${t[1]}
@@ -1949,7 +1919,7 @@ let p = class extends O {
     }}
             >
               ${this.groups.map(
-      (s) => c`<option
+      (s) => h`<option
                   value=${s.id}
                   ?selected=${e.groups.includes(s.id)}
                 >
@@ -1982,7 +1952,7 @@ let p = class extends O {
             Cancel
           </button>
           <div class="grow"></div>
-          ${i ? c`<button class="secondary" @click=${() => void this.deleteTheme()}>
+          ${i ? h`<button class="secondary" @click=${() => void this.deleteTheme()}>
                 Delete
               </button>` : d}
         </div>
@@ -2001,7 +1971,7 @@ let p = class extends O {
    *  different day from the lounge is the ordinary case, not an advanced one.
    */
   renderRooms() {
-    return this.groups.length === 0 ? c`${d}` : c`
+    return this.groups.length === 0 ? h`${d}` : h`
       <div class="card">
         <div class="themes-head">
           <h2>Rooms</h2>
@@ -2017,7 +1987,7 @@ let p = class extends O {
             </thead>
             <tbody>
               ${this.groups.map(
-      (e) => c`
+      (e) => h`
                   <tr>
                     <td>${e.name}</td>
                     <td>
@@ -2029,7 +1999,7 @@ let p = class extends O {
       )}
                       >
                         ${this.profiles.map(
-        (t) => c`<option
+        (t) => h`<option
                             value=${t.id}
                             ?selected=${t.id === e.profile_id}
                           >
@@ -2057,7 +2027,7 @@ let p = class extends O {
     const e = new Map(this.resolved.map((i) => [i.id, i])), t = [...this.keyframes].sort(
       (i, s) => (e.get(i.id)?.minute ?? 0) - (e.get(s.id)?.minute ?? 0)
     );
-    return c`
+    return h`
       <div class="card">
         <div class="themes-head">
           <h2>Keyframes</h2>
@@ -2088,21 +2058,21 @@ let p = class extends O {
    *  coloured section without painting over it.
    */
   renderKeyframeColour(e) {
-    const t = this.keyframes.find((s) => s.id === e);
-    if (!t) return c`${d}`;
-    const i = t.colour.hs ?? [30, 90];
-    return c`
+    const t = this.keyframes.find((r) => r.id === e);
+    if (!t) return h`${d}`;
+    const i = this.resolved.find((r) => r.id === e), s = t.colour.hs ?? [30, 90];
+    return h`
       <div class="editor">
-        <h3>Colour at ${this.resolved.find((s) => s.id === e) ? C(this.resolved.find((s) => s.id === e).minute) : e}</h3>
+        <h3>Colour at ${i ? P(i.minute) : e}</h3>
         <div class="row">
           <div>
             <label for="kf-mode">Type</label>
             <select
               id="kf-mode"
-              @change=${(s) => {
-      const r = s.target.value;
-      this.mutate(t.id, (o) => {
-        o.colour = r === "kelvin" ? { mode: "kelvin", kelvin: 2700 } : { mode: "hs", hs: [30, 90] };
+              @change=${(r) => {
+      const o = r.target.value;
+      this.mutate(t.id, (n) => {
+        n.colour = o === "kelvin" ? { mode: "kelvin", kelvin: 2700 } : { mode: "hs", hs: [30, 90] };
       }), this.refreshGraph();
     }}
             >
@@ -2114,7 +2084,7 @@ let p = class extends O {
               </option>
             </select>
           </div>
-          ${t.colour.mode === "kelvin" ? c`<div class="grow">
+          ${t.colour.mode === "kelvin" ? h`<div class="grow">
                 <label for="kf-kelvin">
                   ${t.colour.kelvin}K — warm to cool
                 </label>
@@ -2125,11 +2095,11 @@ let p = class extends O {
                   max="6500"
                   step="50"
                   .value=${String(t.colour.kelvin ?? 2700)}
-                  @input=${(s) => {
-      this.mutate(t.id, (r) => {
-        r.colour = {
+                  @input=${(r) => {
+      this.mutate(t.id, (o) => {
+        o.colour = {
           mode: "kelvin",
-          kelvin: Number(s.target.value)
+          kelvin: Number(r.target.value)
         };
       });
     }}
@@ -2137,16 +2107,16 @@ let p = class extends O {
                 />
               </div>` : d}
         </div>
-        ${t.colour.mode === "hs" ? c`<lightcurve-colour-wheel
-              .hue=${i[0]}
-              .saturation=${i[1]}
+        ${t.colour.mode === "hs" ? h`<lightcurve-colour-wheel
+              .hue=${s[0]}
+              .saturation=${s[1]}
               .brightness=${t.brightness}
-              @colour-change=${(s) => {
-      this.mutate(t.id, (r) => {
-        r.colour = {
+              @colour-change=${(r) => {
+      this.mutate(t.id, (o) => {
+        o.colour = {
           mode: "hs",
-          hs: [s.detail.hue, s.detail.saturation]
-        }, r.brightness = s.detail.brightness;
+          hs: [r.detail.hue, r.detail.saturation]
+        }, o.brightness = r.detail.brightness;
       }), this.refreshGraph();
     }}
             ></lightcurve-colour-wheel>` : d}
@@ -2159,26 +2129,26 @@ let p = class extends O {
     `;
   }
   renderKeyframeRow(e, t) {
-    const i = t.get(e.id), s = e.time.type === "sun", r = e.colour.mode === "kelvin" ? Ft(e.colour.kelvin ?? 3e3) : ut(e.colour.hs?.[0] ?? 0, e.colour.hs?.[1] ?? 100);
-    return c`
+    const i = t.get(e.id), s = e.time.type === "sun", r = e.colour.mode === "kelvin" ? Kt(e.colour.kelvin ?? 3e3) : Lt(e.colour.hs?.[0] ?? 0, e.colour.hs?.[1] ?? 100);
+    return h`
       <tr class=${this.selectedId === e.id ? "selected" : ""}
           @click=${() => this.selectedId = e.id}>
         <td>
-          ${s ? c`<span class="sun-pill" title="Follows the sun, so it moves daily">
+          ${s ? h`<span class="sun-pill" title="Follows the sun, so it moves daily">
                 ${e.time.event}${(e.time.offset_min ?? 0) !== 0 ? ` ${e.time.offset_min > 0 ? "+" : ""}${e.time.offset_min}m` : ""}
-              </span>` : c`<input
+              </span>` : h`<input
                 class="cell"
                 .value=${e.time.value ?? "00:00"}
                 @change=${(o) => {
-      const n = Ot(o.target.value);
+      const n = Et(o.target.value);
       n !== null && (this.mutate(e.id, (a) => {
-        a.time = { type: "fixed", value: C(n) };
+        a.time = { type: "fixed", value: P(n) };
       }), this.refreshGraph());
     }}
               />`}
         </td>
         <td class="muted">
-          ${i ? C(i.minute) : "—"}
+          ${i ? P(i.minute) : "—"}
         </td>
         <td>
           <button
@@ -2190,7 +2160,7 @@ let p = class extends O {
           >
             <span class="swatch inline" style="background:${r}"></span>
           </button>
-          ${e.colour.mode === "kelvin" ? c`<input
+          ${e.colour.mode === "kelvin" ? h`<input
                 class="cell narrow"
                 type="number"
                 min="1000"
@@ -2205,7 +2175,7 @@ let p = class extends O {
         };
       }), this.refreshGraph();
     }}
-              />K` : c`<input
+              />K` : h`<input
                 class="cell narrow"
                 type="number"
                 min="0"
@@ -2246,7 +2216,7 @@ let p = class extends O {
     }}
           >
             ${["linear", "ease_in_out", "step"].map(
-      (o) => c`<option value=${o} ?selected=${e.easing === o}>
+      (o) => h`<option value=${o} ?selected=${e.easing === o}>
                 ${o}
               </option>`
     )}
@@ -2265,18 +2235,18 @@ let p = class extends O {
     `;
   }
   renderSheet(e) {
-    return c`
+    return h`
       <div class="sheet">
         <div class="row">
           <div>
             <label for="time">Time</label>
-            ${e.time.type === "sun" ? c`<input id="time" .value=${`${e.time.event} ${e.time.offset_min ?? 0}m`} readonly />` : c`<input
+            ${e.time.type === "sun" ? h`<input id="time" .value=${`${e.time.event} ${e.time.offset_min ?? 0}m`} readonly />` : h`<input
                   id="time"
                   .value=${e.time.value ?? "00:00"}
                   @change=${(t) => {
-      const i = Ot(t.target.value);
+      const i = Et(t.target.value);
       i !== null && (this.mutate(e.id, (s) => {
-        s.time = { type: "fixed", value: C(i) };
+        s.time = { type: "fixed", value: P(i) };
       }), this.refreshGraph());
     }}
                 />`}
@@ -2326,7 +2296,7 @@ let p = class extends O {
     }}
             >
               ${["linear", "ease_in_out", "step"].map(
-      (t) => c`<option value=${t} ?selected=${e.easing === t}>
+      (t) => h`<option value=${t} ?selected=${e.easing === t}>
                   ${t}
                 </option>`
     )}
@@ -2346,7 +2316,7 @@ let p = class extends O {
     `;
   }
 };
-p.styles = mt`
+p.styles = dt`
     :host {
       display: block;
       padding: 16px;
@@ -2601,95 +2571,87 @@ p.styles = mt`
       .bar > * { flex: 1 1 100%; }
     }
   `;
-v([
-  b({ attribute: !1 })
+g([
+  y({ attribute: !1 })
 ], p.prototype, "hass", 2);
-v([
-  b({ type: Boolean })
+g([
+  y({ type: Boolean })
 ], p.prototype, "narrow", 2);
-v([
-  g()
+g([
+  m()
 ], p.prototype, "profiles", 2);
-v([
-  g()
+g([
+  m()
 ], p.prototype, "groups", 2);
-v([
-  g()
+g([
+  m()
 ], p.prototype, "themes", 2);
-v([
-  g()
+g([
+  m()
 ], p.prototype, "editingTheme", 2);
-v([
-  g()
+g([
+  m()
 ], p.prototype, "themeTarget", 2);
-v([
-  g()
-], p.prototype, "paintSaturation", 2);
-v([
-  g()
+g([
+  m()
 ], p.prototype, "colourPickFor", 2);
-v([
-  g()
+g([
+  m()
 ], p.prototype, "profile", 2);
-v([
-  g()
+g([
+  m()
 ], p.prototype, "variant", 2);
-v([
-  g()
+g([
+  m()
 ], p.prototype, "samples", 2);
-v([
-  g()
+g([
+  m()
 ], p.prototype, "resolved", 2);
-v([
-  g()
+g([
+  m()
 ], p.prototype, "sun", 2);
-v([
-  g()
+g([
+  m()
 ], p.prototype, "issues", 2);
-v([
-  g()
+g([
+  m()
 ], p.prototype, "selectedId", 2);
-v([
-  g()
+g([
+  m()
 ], p.prototype, "previewGroupId", 2);
-v([
-  g()
+g([
+  m()
 ], p.prototype, "scrubMinute", 2);
-v([
-  g()
+g([
+  m()
 ], p.prototype, "dirty", 2);
-v([
-  g()
+g([
+  m()
 ], p.prototype, "busy", 2);
-v([
-  g()
+g([
+  m()
 ], p.prototype, "error", 2);
-v([
-  g()
+g([
+  m()
 ], p.prototype, "graphWidth", 2);
-p = v([
-  yt("lightcurve-panel")
+p = g([
+  gt("lightcurve-panel")
 ], p);
-function Le(e) {
+function Ke(e) {
   if (e.mode === "effect")
     return "linear-gradient(135deg, #ff4081, #7c4dff, #00bcd4)";
   if (e.colour?.mode === "kelvin")
-    return Ft(e.colour.kelvin ?? 3e3);
+    return Kt(e.colour.kelvin ?? 3e3);
   const t = e.colour?.hs ?? [30, 80];
-  return ut(t[0], t[1]);
+  return Lt(t[0], t[1]);
 }
-function Dt(e, t) {
-  return t === "brightness" ? e.brightness_pct ?? 1 : t === "warmth" ? e.kelvin ?? 2700 : e.hs ? e.hs[0] : 0;
+function Ut(e, t) {
+  return e.brightness_pct ?? 1;
 }
-function je(e, t, i, s) {
-  if (t === "brightness")
-    return { ...e, brightness_pct: Math.round(i) };
-  if (t === "warmth")
-    return { ...e, mode: "kelvin", kelvin: Math.round(i) };
-  const r = s ?? (e.hs ? e.hs[1] : 100);
-  return { ...e, mode: "hs", hs: [Math.round(i) % 360, Math.round(r)] };
+function Fe(e, t, i, s) {
+  return { ...e, brightness_pct: Math.round(i) };
 }
-function Be() {
+function We() {
   const e = /* @__PURE__ */ new Date();
   return e.getHours() * 60 + e.getMinutes();
 }
